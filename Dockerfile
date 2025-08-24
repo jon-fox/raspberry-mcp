@@ -30,4 +30,4 @@ COPY README.md ./
 
 EXPOSE 8000
 # Run your server via uv (uses the synced venv at .venv)
-CMD ["uv", "run", "-m", "mcp_server.app"]
+CMD ["uv", "run", "-m", "mcp_server.server"]
