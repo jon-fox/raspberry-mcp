@@ -10,6 +10,9 @@
 # (Re)start container on the Pi
 # ssh foxj7@mcppi.local 'docker rm -f mcppi || true'
 
+# shutdown raspberry pi
+# ssh foxj7@mcppi.local 'sudo shutdown now'
+
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
