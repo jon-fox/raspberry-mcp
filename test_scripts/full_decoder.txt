@@ -1,0 +1,28 @@
+1 Edit config
+   sudo vi /boot/firmware/config.txt
+   Add line:
+   dtoverlay=gpio-ir,gpio_pin=17
+   Save and exit, then:
+   sudo reboot
+
+2 Stop LIRC if installed
+   sudo systemctl stop lircd lircd.socket 2>/dev/null || true
+
+3 Install tools
+   sudo apt update
+   sudo apt install -y ir-keytable
+
+4 Check device
+   ir-keytable
+   (Look for: /sys/class/rc/rc0 driver: gpio_ir_recv)
+
+5 Run decoder
+   sudo ir-keytable -s rc0 -c -p nec,rc5,rc6,sony,jvc,panasonic -t
+   Press remote buttons, see protocol + scancode
+
+6 If nothing shows
+   sudo ir-keytable -s rc0 -c -p all -t
+   dmesg | grep -i gpio-ir
+
+7 (Optional) restart LIRC later
+   sudo systemctl start lircd
