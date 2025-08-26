@@ -33,3 +33,6 @@ dnsTunneling=false
 
 # local login via wifi
 ssh user@mcppi.local
+
+# docs
+https://www.digikey.com/en/maker/tutorials/2021/how-to-send-and-receive-ir-signals-with-a-raspberry-pi
