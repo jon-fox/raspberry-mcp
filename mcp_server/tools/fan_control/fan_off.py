@@ -1,4 +1,4 @@
-"""Tool for adding two numbers."""
+"""Tool for turning off a fan."""
 
 from typing import Dict, Any
 from mcp_server.tools.fan_control.fan_model import FanOffRequest, FanOffResponse
