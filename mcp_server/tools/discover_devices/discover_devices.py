@@ -1,7 +1,7 @@
 """Tool for setting the speed of a fan."""
 
 from typing import Dict, Any
-from mcp_server.tools.discovery.discovery_model import (
+from mcp_server.tools.discover_devices.discovery_model import (
     DiscoverInput,
     DiscoverOutput,
     Candidate,
