@@ -32,7 +32,7 @@ class SetFanSpeed(Tool):
             input_data: The validated input for the tool
 
         Returns:
-            A response containing the sum
+            A response containing the FanSpeedResponse
         """
         output = SetFanSpeedResponse(success=True, message="Fan speed set successfully")
         return ToolResponse.from_model(output)

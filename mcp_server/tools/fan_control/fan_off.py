@@ -29,7 +29,7 @@ class FanOff(Tool):
             input_data: The validated input for the tool
 
         Returns:
-            A response containing the sum
+            A response containing the FanOffResponse
         """
         output = FanOffResponse(success=True, message="Fan turned off successfully")
         return ToolResponse.from_model(output)
