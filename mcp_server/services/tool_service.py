@@ -26,7 +26,9 @@ class ToolService:
             raise ValueError(f"Tool not found: {tool_name}")
         return self._tools[tool_name]
 
-    async def execute_tool(self, tool_name: str, input_data: Dict[str, Any]) -> ToolResponse:
+    async def execute_tool(
+        self, tool_name: str, input_data: Dict[str, Any]
+    ) -> ToolResponse:
         """Execute a tool by name with given arguments.
 
         Args:
@@ -95,7 +97,9 @@ class ToolService:
                 # This ensures FastMCP gets the complete schema including nested objects
                 async def handler(input_data: tool_instance.input_model):
                     f'"""{tool_instance.description}"""'
-                    result = await self.execute_tool(tool_instance.name, input_data.model_dump())
+                    result = await self.execute_tool(
+                        tool_instance.name, input_data.model_dump()
+                    )
                     return self._serialize_response(result)
 
                 return handler

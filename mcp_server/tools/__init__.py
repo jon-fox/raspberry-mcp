@@ -1,7 +1,11 @@
 """Tool exports."""
 
-from .add_numbers import AddNumbersTool
+from .fan_control import FanOff
+from .fan_control import FanOn
+from .fan_control import SetFanSpeed
 
 __all__ = [
-    "AddNumbersTool",
+    "FanOff",
+    "FanOn",
+    "SetFanSpeed",
 ]

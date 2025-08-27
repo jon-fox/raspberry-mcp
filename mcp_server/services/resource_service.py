@@ -106,7 +106,10 @@ class ResourceService:
 
             # Register the resource with the full metadata
             wrapped_handler = mcp.resource(
-                uri=uri_pattern, name=resource.name, description=resource.description, mime_type=resource.mime_type
+                uri=uri_pattern,
+                name=resource.name,
+                description=resource.description,
+                mime_type=resource.mime_type,
             )(handler)
 
             # Ensure the handler's metadata is preserved

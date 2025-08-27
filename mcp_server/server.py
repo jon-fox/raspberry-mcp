@@ -13,14 +13,18 @@ from mcp_server.services.resource_service import ResourceService
 from mcp_server.interfaces.tool import Tool
 from mcp_server.interfaces.resource import Resource
 from mcp_server.tools import (
-    AddNumbersTool,
+    FanOff,
+    FanOn,
+    SetFanSpeed,
 )
 
 
 def get_available_tools() -> List[Tool]:
     """Get list of all available tools."""
     return [
-        AddNumbersTool(),
+        FanOff(),
+        FanOn(),
+        SetFanSpeed(),
     ]
 
 
@@ -50,9 +54,6 @@ def create_http_app():
     """Create a FastMCP HTTP app with CORS middleware."""
     mcp_server = create_mcp_server()
 
-    # Use FastMCP directly as the app instead of mounting it
-    # This avoids the task group initialization issue
-    # See: https://github.com/modelcontextprotocol/python-sdk/issues/732
     app = mcp_server.http_app()  # type: ignore[attr-defined]
 
     # Apply CORS middleware manually
@@ -72,7 +73,9 @@ def main():
     parser = argparse.ArgumentParser(description="Run MCP HTTP Stream server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8000, help="Port to listen on")
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
+    parser.add_argument(
+        "--reload", action="store_true", help="Enable auto-reload for development"
+    )
     args = parser.parse_args()
 
     app = create_http_app()
