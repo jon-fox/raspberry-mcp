@@ -3,7 +3,7 @@ from pydantic import ConfigDict, Field
 from mcp_server.interfaces.tool import BaseToolInput
 
 
-# ── Listener control ──────────────────────────────────────────────────────────
+# Start IR Listener
 class StartIrListenerInput(BaseToolInput):
     """No input needed; the server auto-detects the IR receiver."""
 
@@ -32,7 +32,7 @@ class StartIrListenerOutput(BaseToolInput):
         examples=["Listening started. Press the buttons you want to capture now."],
     )
 
-
+# Stop IR Listener
 class StopIrListenerInput(BaseToolInput):
     """Stops the background IR listener."""
 
@@ -59,6 +59,7 @@ class StopIrListenerOutput(BaseToolInput):
     )
 
 
+### Clear IR Events
 class ClearIrEventsInput(BaseToolInput):
     """Clears recent captured presses so the next mapping is unambiguous."""
 
@@ -81,7 +82,7 @@ class ClearIrEventsOutput(BaseToolInput):
     )
 
 
-# ── Mapping recent presses to operations (no codes exposed) ───────────────────
+# Submit Mappings
 class SubmitMappingsInput(BaseToolInput):
     model_config = ConfigDict(
         json_schema_extra={
