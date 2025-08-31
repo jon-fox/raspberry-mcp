@@ -5,7 +5,6 @@ import argparse
 
 import uvicorn
 from starlette.middleware.cors import CORSMiddleware
-
 from fastmcp import FastMCP
 
 from mcp_server.services.tool_service import ToolService
@@ -13,18 +12,22 @@ from mcp_server.services.resource_service import ResourceService
 from mcp_server.interfaces.tool import Tool
 from mcp_server.interfaces.resource import Resource
 from mcp_server.tools import (
-    FanOff,
-    FanOn,
-    SetFanSpeed,
+    # Device registration tools
+    StartIRListener,
+    StopIRListener,
+    ClearIREvents,
+    SubmitMappings,
 )
 
 
 def get_available_tools() -> List[Tool]:
     """Get list of all available tools."""
     return [
-        FanOff(),
-        FanOn(),
-        SetFanSpeed(),
+        # Device registration tools
+        StartIRListener(),
+        StopIRListener(),
+        ClearIREvents(),
+        SubmitMappings(),
     ]
 
 

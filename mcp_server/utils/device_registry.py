@@ -30,14 +30,16 @@ def _load_devices() -> Dict[str, Any]:
 
 def save_device_mapping(
     device_key: str, 
-    operations: List[str], 
+    required_operations: List[str], 
+    optional_operations: List[str],
     ir_events: List[Dict[str, Any]]
 ) -> bool:
     """Save device mapping to persistent storage.
     
     Args:
         device_key: Unique identifier for the device
-        operations: List of operation names in order
+        required_operations: List of required operation names (power_on, power_off)
+        optional_operations: List of optional operation names (speed controls, volume controls, etc.)
         ir_events: List of IR events captured for these operations
         
     Returns:
@@ -49,24 +51,31 @@ def save_device_mapping(
         # Load existing devices or create new structure
         devices = _load_devices()
         
-        # Create device mapping
+        # Combine operations in order (required first, then optional)
+        all_operations = required_operations + optional_operations
+        
+        # Create device mapping with new structure
         device_mapping = {
             "device_key": device_key,
-            "operations": operations,
-            "ir_signals": [],
+            "required_operations": required_operations,
+            "optional_operations": optional_operations,
+            "codes": {},  # This will store operation_name -> IR code mapping
+            "protocol": None,  # Will be set from first IR event
+            "tx_device": None,  # Will be set from first IR event
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
         
+        # Extract protocol and tx_device from first event (should be consistent)
+        if ir_events:
+            first_event = ir_events[0]
+            device_mapping["protocol"] = first_event.get("protocol", "unknown")
+            device_mapping["tx_device"] = first_event.get("tx_device", "unknown")
+        
         # Map each operation to its corresponding IR event
-        for i, (operation, event) in enumerate(zip(operations, ir_events)):
-            signal_data = {
-                "operation": operation,
-                "timestamp": event["timestamp"].isoformat() if hasattr(event["timestamp"], "isoformat") else str(event["timestamp"]),
-                "signal_type": event.get("type", "button_press"),
-                "sequence_order": i
-            }
-            device_mapping["ir_signals"].append(signal_data)
+        for i, (operation, event) in enumerate(zip(all_operations, ir_events)):
+            # Store the IR code directly for easy lookup
+            device_mapping["codes"][operation] = event.get("code", event.get("hex_code", ""))
         
         # Update or add device
         devices[device_key] = device_mapping

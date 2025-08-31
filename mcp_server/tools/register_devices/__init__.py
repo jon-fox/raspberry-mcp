@@ -1,7 +1,13 @@
-"""Register Tools"""
+"""Register Device Tools"""
 
-from .register_device import RegisterDevices
+from .startir_listener import StartIRListener
+from .stopir_listener import StopIRListener  
+from .clearir_events import ClearIREvents
+from .submit_mappings import SubmitMappings
 
 __all__ = [
-    "RegisterDevices",
+    "StartIRListener",
+    "StopIRListener", 
+    "ClearIREvents",
+    "SubmitMappings",
 ]
