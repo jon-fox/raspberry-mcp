@@ -41,6 +41,9 @@ class FanOff(Tool):
 
         device_mapping = load_device_mapping(input_data.device_id)
 
+        if not device_mapping:
+            return self._create_error_response("Device not found")
+
         try:
             protocol = device_mapping["protocol"]
             tx_device = device_mapping["tx_device"]

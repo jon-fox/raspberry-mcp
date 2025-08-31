@@ -1,6 +1,6 @@
 import asyncio
 
-async def _ir_send(protocol: str, hex_code: str, device_path: str) -> tuple[bool, str]:
+async def ir_send(protocol: str, hex_code: str, device_path: str) -> tuple[bool, str]:
     proc = await asyncio.create_subprocess_exec(
         "ir-ctl",
         "--device",

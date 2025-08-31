@@ -30,6 +30,10 @@ class FanOn(Tool):
     async def execute(self, input_data: FanOnRequest) -> ToolResponse:
         # 1) resolve device + code
         device_mapping = load_device_mapping(input_data.device_id)
+
+        if not device_mapping:
+            return self._create_error_response("Device not found")
+
         try:
             protocol = device_mapping["protocol"]
             tx_device = device_mapping["tx_device"]
