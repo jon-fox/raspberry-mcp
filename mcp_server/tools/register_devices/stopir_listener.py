@@ -6,6 +6,7 @@ from mcp_server.tools.register_devices.register_models import (
     StopIrListenerOutput,
 )
 from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.tools.register_devices.startir_listener import IRListenerManager
 
 
 class StopIRListener(Tool):
@@ -34,8 +35,11 @@ class StopIRListener(Tool):
         Returns:
             A response confirming the stop IR listener
         """
+        manager = IRListenerManager.get_instance()
+        success, message = await manager.stop_listening()
+        
         output = StopIrListenerOutput(
-            success=True,
-            message="IR listener stopped successfully.",
+            success=success,
+            message=message,
         )
         return ToolResponse.from_model(output)

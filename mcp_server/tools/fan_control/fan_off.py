@@ -3,6 +3,8 @@
 from typing import Dict, Any
 from mcp_server.tools.fan_control.fan_model import FanOffRequest, FanOffResponse
 from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.utils.ir_event_controls import ir_send
+from mcp_server.utils.device_registry import load_device_mapping
 
 
 class FanOff(Tool):
@@ -22,6 +24,11 @@ class FanOff(Tool):
             "output": self.output_model.model_json_schema(),
         }
 
+    def _create_error_response(self, message: str) -> ToolResponse:
+        output = FanOffResponse(success=False, message=message)
+        return ToolResponse.from_model(output)
+
+
     async def execute(self, input_data: FanOffRequest) -> ToolResponse:
         """Execute the fan off tool.
 
@@ -31,5 +38,21 @@ class FanOff(Tool):
         Returns:
             A response containing the FanOffResponse
         """
+
+        device_mapping = load_device_mapping(input_data.device_id)
+
+        try:
+            protocol = device_mapping["protocol"]
+            tx_device = device_mapping["tx_device"]
+            hex_code = device_mapping["codes"]["power_on"]
+        except Exception as e:
+            return self._create_error_response(f"Config error: {e}")
+
+        # 2) send IR
+        ok, detail = await ir_send(protocol, hex_code, tx_device)
+
+        # 3) respond
+        msg = "Fan turned on successfully" if ok else f"IR send failed: {detail}"
+
         output = FanOffResponse(success=True, message="Fan turned off successfully")
         return ToolResponse.from_model(output)

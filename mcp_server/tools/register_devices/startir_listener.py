@@ -6,7 +6,7 @@ from mcp_server.tools.register_devices.register_models import (
     StartIrListenerOutput,
 )
 from mcp_server.interfaces.tool import Tool, ToolResponse
-
+from mcp_server.services.ir_listener_manager import IRListenerManager
 
 class StartIRListener(Tool):
     """Tool that starts the IR listener."""
@@ -34,8 +34,11 @@ class StartIRListener(Tool):
         Returns:
             A response confirming the start IR listener
         """
+        manager = IRListenerManager.get_instance()
+        success, message = await manager.start_listening()
+        
         output = StartIrListenerOutput(
-            success=True,
-            message="Listening started. Press the buttons you want to capture now.",
+            success=success,
+            message=message,
         )
         return ToolResponse.from_model(output)

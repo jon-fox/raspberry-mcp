@@ -1,4 +1,4 @@
-"""Tool for stopping the IR listener."""
+"""Tool for clearing IR events."""
 
 from typing import Dict, Any
 from mcp_server.tools.register_devices.register_models import (
@@ -6,6 +6,7 @@ from mcp_server.tools.register_devices.register_models import (
     ClearIrEventsOutput,
 )
 from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.tools.register_devices.startir_listener import IRListenerManager
 
 
 class ClearIREvents(Tool):
@@ -34,6 +35,9 @@ class ClearIREvents(Tool):
         Returns:
             A response confirming the cleared IR events
         """
+        manager = IRListenerManager.get_instance()
+        manager.clear_events()
+        
         output = ClearIrEventsOutput(
             success=True,
             message="IR events cleared successfully.",
