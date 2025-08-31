@@ -1,5 +1,4 @@
 import asyncio
-import time
 import RPi.GPIO as GPIO
 from datetime import datetime
 
