@@ -63,8 +63,8 @@ class SendIRCommand(Tool):
 
         try:
             protocol = device_mapping["protocol"]
-            tx_device = device_mapping["tx_device"]
             hex_code = device_mapping["codes"][input_data.operation]
+            # tx_device is no longer needed since we use GPIO17 directly
         except KeyError as e:
             return self._create_error_response(
                 f"Configuration error for device '{input_data.device_id}': missing {e}",
@@ -72,8 +72,8 @@ class SendIRCommand(Tool):
                 operation=input_data.operation
             )
 
-        # Send IR command
-        ok, detail = await ir_send(protocol, hex_code, tx_device)
+        # Send IR command using GPIO17 directly
+        ok, detail = await ir_send(protocol, hex_code)
 
         # Create response
         if ok:

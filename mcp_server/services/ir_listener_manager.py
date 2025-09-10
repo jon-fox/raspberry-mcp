@@ -9,7 +9,7 @@ class IRListenerManager:
     _listener_task = None
     _ir_events = []
     _is_listening = False
-    PIN = 17  # GPIO17 (pin 11)
+    PIN = 27  # GPIO27 (pin 13)
     
     def __new__(cls):
         if cls._instance is None:
