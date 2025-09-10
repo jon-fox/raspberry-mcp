@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mcppi": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://mcppi.local:8000/mcp", "--allow-http"]
+    }
+  }
+}

@@ -17,6 +17,9 @@ from mcp_server.tools import (
     StopIRListener,
     ClearIREvents,
     SubmitMappings,
+    SendIRCommand,
+    ListDeviceOperations,
+    GetMappingGuidance,
 )
 
 
@@ -28,6 +31,9 @@ def get_available_tools() -> List[Tool]:
         StopIRListener(),
         ClearIREvents(),
         SubmitMappings(),
+        SendIRCommand(),
+        ListDeviceOperations(),
+        GetMappingGuidance(),
     ]
 
 
