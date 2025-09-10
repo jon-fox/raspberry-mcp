@@ -2,6 +2,7 @@
 
 from typing import List
 import argparse
+import logging
 
 import uvicorn
 from starlette.middleware.cors import CORSMiddleware
@@ -22,10 +23,18 @@ from mcp_server.tools import (
     GetMappingGuidance,
 )
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 
 def get_available_tools() -> List[Tool]:
     """Get list of all available tools."""
-    return [
+    logger.info("Initializing available tools")
+    tools = [
         # Device registration tools
         StartIRListener(),
         StopIRListener(),
@@ -35,6 +44,8 @@ def get_available_tools() -> List[Tool]:
         ListDeviceOperations(),
         GetMappingGuidance(),
     ]
+    logger.info(f"Successfully initialized {len(tools)} tools")
+    return tools
 
 
 def get_available_resources() -> List[Resource]:
@@ -44,18 +55,22 @@ def get_available_resources() -> List[Resource]:
 
 def create_mcp_server() -> FastMCP:
     """Create and configure the MCP server."""
+    logger.info("Creating MCP server instance")
     mcp = FastMCP("example-mcp-server")
     tool_service = ToolService()
     resource_service = ResourceService()
 
     # Register all tools and their MCP handlers
+    logger.info("Registering tools and MCP handlers")
     tool_service.register_tools(get_available_tools())
     tool_service.register_mcp_handlers(mcp)
 
     # Register all resources and their MCP handlers
+    logger.info("Registering resources and MCP handlers")
     resource_service.register_resources(get_available_resources())
     resource_service.register_mcp_handlers(mcp)
 
+    logger.info("MCP server configuration completed successfully")
     return mcp
 
 
@@ -87,6 +102,7 @@ def main():
     )
     args = parser.parse_args()
 
+    logger.info(f"Starting MCP HTTP Stream Server on {args.host}:{args.port}")
     app = create_http_app()
     print(f"MCP HTTP Stream Server starting on {args.host}:{args.port}")
     uvicorn.run(

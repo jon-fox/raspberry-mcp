@@ -1,10 +1,14 @@
 """Generic tool for sending IR commands to any registered device."""
 
 from typing import Dict, Any
+import logging
+
 from mcp_server.tools.ir_control.ir_models import SendIRCommandRequest, SendIRCommandResponse
 from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.device_registry import load_device_mapping
 from mcp_server.utils.ir_event_controls import ir_send
+
+logger = logging.getLogger(__name__)
 
 
 class SendIRCommand(Tool):
@@ -41,10 +45,13 @@ class SendIRCommand(Tool):
         Returns:
             A response indicating success or failure of the IR command
         """
+        logger.info(f"Executing IR command: device_id='{input_data.device_id}', operation='{input_data.operation}'")
+        
         # Load device mapping
         device_mapping = load_device_mapping(input_data.device_id)
 
         if not device_mapping:
+            logger.warning(f"Device '{input_data.device_id}' not found in registry")
             return self._create_error_response(
                 f"Device '{input_data.device_id}' not found. Make sure the device is registered using SubmitMappings.",
                 device_id=input_data.device_id,
@@ -54,6 +61,7 @@ class SendIRCommand(Tool):
         # Check if the operation is available for this device
         if "codes" not in device_mapping or input_data.operation not in device_mapping["codes"]:
             available_ops = list(device_mapping.get("codes", {}).keys())
+            logger.warning(f"Operation '{input_data.operation}' not available for device '{input_data.device_id}'. Available: {available_ops}")
             return self._create_error_response(
                 f"Operation '{input_data.operation}' not available for device '{input_data.device_id}'. "
                 f"Available operations: {available_ops}",
@@ -64,8 +72,10 @@ class SendIRCommand(Tool):
         try:
             protocol = device_mapping["protocol"]
             hex_code = device_mapping["codes"][input_data.operation]
+            logger.info(f"Sending IR command: protocol={protocol}, hex_code={hex_code}")
             # tx_device is no longer needed since we use GPIO17 directly
         except KeyError as e:
+            logger.error(f"Configuration error for device '{input_data.device_id}': missing {e}")
             return self._create_error_response(
                 f"Configuration error for device '{input_data.device_id}': missing {e}",
                 device_id=input_data.device_id,
@@ -78,8 +88,10 @@ class SendIRCommand(Tool):
         # Create response
         if ok:
             message = f"Command '{input_data.operation}' sent successfully to '{input_data.device_id}'"
+            logger.info(f"IR command sent successfully: {message}")
         else:
             message = f"IR send failed for '{input_data.operation}' on '{input_data.device_id}': {detail}"
+            logger.error(f"IR command failed: {message}")
 
         output = SendIRCommandResponse(
             success=ok,

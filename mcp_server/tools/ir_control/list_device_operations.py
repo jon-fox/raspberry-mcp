@@ -1,9 +1,13 @@
 """Tool for listing available operations for a registered device."""
 
 from typing import Dict, Any
+import logging
+
 from mcp_server.tools.ir_control.ir_models import ListDeviceOperationsRequest, ListDeviceOperationsResponse
 from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.device_registry import load_device_mapping
+
+logger = logging.getLogger(__name__)
 
 
 class ListDeviceOperations(Tool):
@@ -31,10 +35,13 @@ class ListDeviceOperations(Tool):
         Returns:
             A response listing available operations for the device
         """
+        logger.info(f"Listing operations for device '{input_data.device_id}'")
+        
         # Load device mapping
         device_mapping = load_device_mapping(input_data.device_id)
 
         if not device_mapping:
+            logger.warning(f"Device '{input_data.device_id}' not found in registry")
             output = ListDeviceOperationsResponse(
                 success=False,
                 device_id=input_data.device_id,
@@ -50,6 +57,7 @@ class ListDeviceOperations(Tool):
         
         # For backward compatibility with old format
         if not required_operations and not optional_operations:
+            logger.info(f"Using backward compatibility mode for device '{input_data.device_id}'")
             # Try to extract from old format
             all_codes = list(device_mapping.get("codes", {}).keys())
             # Assume power_on and power_off are required if they exist
@@ -60,9 +68,12 @@ class ListDeviceOperations(Tool):
         num_optional = len(optional_operations)
         total_ops = num_required + num_optional
 
+        logger.info(f"Device '{input_data.device_id}' has {num_required} required and {num_optional} optional operations")
+
         message = f"Device '{input_data.device_id}' has {num_required} required and {num_optional} optional operations"
         if total_ops == 0:
             message = f"Device '{input_data.device_id}' has no registered operations"
+            logger.warning(f"Device '{input_data.device_id}' has no registered operations")
 
         output = ListDeviceOperationsResponse(
             success=True,

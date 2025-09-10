@@ -1,12 +1,16 @@
 """Tool for stopping the IR listener."""
 
 from typing import Dict, Any
+import logging
+
 from mcp_server.tools.register_devices.register_models import (
     StopIrListenerInput,
     StopIrListenerOutput,
 )
 from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.tools.register_devices.startir_listener import IRListenerManager
+
+logger = logging.getLogger(__name__)
 
 
 class StopIRListener(Tool):
@@ -35,11 +39,18 @@ class StopIRListener(Tool):
         Returns:
             A response confirming the stop IR listener
         """
+        logger.info("Stopping IR listener service")
         manager = IRListenerManager.get_instance()
         success, message = await manager.stop_listening()
+        
+        if success:
+            logger.info(f"IR listener stopped successfully: {message}")
+        else:
+            logger.error(f"Failed to stop IR listener: {message}")
         
         output = StopIrListenerOutput(
             success=success,
             message=message,
         )
+        logger.info(f"IR listener stop operation completed with success={success}")
         return ToolResponse.from_model(output)

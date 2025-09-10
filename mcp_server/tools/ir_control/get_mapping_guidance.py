@@ -1,8 +1,12 @@
 """Tool for providing guidance on IR device mapping."""
 
 from typing import Dict, Any, List
+import logging
+
 from mcp_server.interfaces.tool import Tool, ToolResponse, BaseToolInput
 from pydantic import Field, ConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class GetMappingGuidanceRequest(BaseToolInput):
@@ -124,12 +128,18 @@ class GetMappingGuidance(Tool):
             A response with mapping guidance for the specified device type
         """
         device_type = input_data.device_type.lower()
+        logger.info(f"Providing mapping guidance for device type: '{device_type}'")
         
         # Get suggestions for the device type, fall back to generic if not found
         suggestions = self.DEVICE_SUGGESTIONS.get(device_type, self.DEVICE_SUGGESTIONS["generic"])
         
+        if device_type not in self.DEVICE_SUGGESTIONS:
+            logger.info(f"Unknown device type '{device_type}', using generic guidance")
+            device_type = "generic"  # For response consistency
+        
         # All devices require power controls
         required_operations = ["power_on", "power_off"]
+        logger.info(f"Generated guidance for '{device_type}': {len(suggestions['suggested_optional'])} optional operations suggested")
         
         output = GetMappingGuidanceResponse(
             device_type=device_type,
@@ -139,4 +149,5 @@ class GetMappingGuidance(Tool):
             example_mapping_order=suggestions["example_order"]
         )
         
+        logger.info(f"Mapping guidance generated successfully for device type '{device_type}'")
         return ToolResponse.from_model(output)
