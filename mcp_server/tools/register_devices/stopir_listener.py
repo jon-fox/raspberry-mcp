@@ -8,7 +8,7 @@ from mcp_server.tools.register_devices.register_models import (
     StopIrListenerOutput,
 )
 from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.tools.register_devices.startir_listener import IRListenerManager
+from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class StopIRListener(Tool):
     """Tool that stops the IR listener."""
 
     name = "StopIRListener"
-    description = "Stops the IR listener to capture remote control signals"
+    description = "Stops the IR listener that captures remote control signals on GPIO pin 27"
     input_model = StopIrListenerInput
     output_model = StopIrListenerOutput
 

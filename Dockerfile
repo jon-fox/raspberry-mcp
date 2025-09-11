@@ -1,8 +1,10 @@
 # Build for Raspberry Pi 4 (arm64) on WSL
+# sudo systemctl enable pigpiod
+# sudo systemctl start pigpiod
 # docker buildx build --platform linux/arm64 -t mcppi:pi --load .
 # docker save mcppi:pi | ssh foxj7@mcppi.local 'docker load'
 # ssh foxj7@mcppi.local 'docker rm -f mcppi || true'
-# ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --privileged mcppi:pi'
+# ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --network host --privileged mcppi:pi'
 # ssh foxj7@mcppi.local 'sudo shutdown now'
 
 FROM python:3.12-slim AS base

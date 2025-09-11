@@ -6,7 +6,7 @@ from .ir_control import ListDeviceOperations
 from .ir_control import GetMappingGuidance
 
 # Device registration tools
-from .register_devices import StartIRListener, StopIRListener, ClearIREvents, SubmitMappings
+from .register_devices import StartIRListener, StopIRListener, ClearIREvents, SubmitMappings, GetListenerStatus
 
 __all__ = [
     "SendIRCommand",
@@ -17,4 +17,5 @@ __all__ = [
     "StopIRListener",
     "ClearIREvents", 
     "SubmitMappings",
+    "GetListenerStatus",
 ]

@@ -16,7 +16,7 @@ class StartIRListener(Tool):
     """Tool that starts the IR listener."""
 
     name = "StartIRListener"
-    description = "Starts the IR listener to capture remote control signals"
+    description = "Starts the IR listener to capture remote control signals on GPIO pin 27. No configuration needed - the pin is automatically configured."
     input_model = StartIrListenerInput
     output_model = StartIrListenerOutput
 

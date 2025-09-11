@@ -8,7 +8,7 @@ from mcp_server.tools.register_devices.register_models import (
     ClearIrEventsOutput,
 )
 from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.tools.register_devices.startir_listener import IRListenerManager
+from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
