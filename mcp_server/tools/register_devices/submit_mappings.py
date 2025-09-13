@@ -30,6 +30,7 @@ class SubmitMappings(Tool):
 
     def get_schema(self) -> Dict[str, Any]:
         """Get the JSON schema for this tool."""
+        logger.debug(f"Getting schema for {self.name} tool")
         return {
             "name": self.name,
             "description": self.description,
@@ -50,13 +51,22 @@ class SubmitMappings(Tool):
         Returns:
             A response confirming the submitted mappings for the device
         """
+        logger.info(f"=== Starting submit mappings operation ===")
+        logger.info(f"Device key: '{input_data.device_key}'")
+        logger.info(f"Required operations: {input_data.required_operations}")
+        logger.info(f"Optional operations: {input_data.optional_operations}")
+        logger.info(f"Time horizon: {input_data.horizon_s}s")
+        
         logger.info(f"Submitting mappings for device '{input_data.device_key}' with {len(input_data.required_operations)} required and {len(input_data.optional_operations)} optional operations")
         
+        logger.debug("Getting IRListenerManager instance")
         manager = IRListenerManager.get_instance()
         
         # Validate required operations
+        logger.debug("Validating required operations")
         if "power_on" not in input_data.required_operations or "power_off" not in input_data.required_operations:
             logger.warning(f"Missing required operations for device '{input_data.device_key}': power_on and power_off are mandatory")
+            logger.warning(f"Provided required operations: {input_data.required_operations}")
             output = SubmitMappingsOutput(
                 success=False,
                 message="Required operations must include both 'power_on' and 'power_off'.",
@@ -64,19 +74,36 @@ class SubmitMappings(Tool):
                 mapped_required=[],
                 mapped_optional=[],
             )
+            logger.info("Returning failure response due to missing required operations")
             return ToolResponse.from_model(output)
         
+        logger.debug("Required operations validation passed")
+        
         # Get recent IR events within the specified horizon
+        logger.debug(f"Retrieving recent IR events within {input_data.horizon_s}s horizon")
         recent_events = manager.get_recent_events(input_data.horizon_s)
         logger.info(f"Found {len(recent_events)} recent IR events within {input_data.horizon_s}s horizon")
+        
+        if recent_events:
+            logger.debug("Recent IR events details:")
+            for i, event in enumerate(recent_events):
+                logger.debug(f"  Event {i+1}: {event}")
+        else:
+            logger.warning("No recent IR events found")
         
         # Combine all operations in order (required first, then optional)
         all_operations = input_data.required_operations + input_data.optional_operations
         num_operations = len(all_operations)
         num_events = len(recent_events)
         
+        logger.info(f"Operation mapping summary:")
+        logger.info(f"  Total operations to map: {num_operations}")
+        logger.info(f"  Available IR events: {num_events}")
+        logger.info(f"  Combined operations order: {all_operations}")
+        
         if num_events < num_operations:
-            logger.warning(f"Insufficient IR events: expected {num_operations}, found {num_events}")
+            logger.error(f"Insufficient IR events: expected {num_operations}, found {num_events}")
+            logger.error(f"Missing {num_operations - num_events} IR events")
             output = SubmitMappingsOutput(
                 success=False,
                 message=f"Not enough IR events captured. Expected {num_operations} but found {num_events}. "
@@ -85,8 +112,10 @@ class SubmitMappings(Tool):
                 mapped_required=[],
                 mapped_optional=[],
             )
+            logger.info("Returning failure response due to insufficient IR events")
         elif num_events > num_operations:
-            logger.warning(f"Too many IR events: expected {num_operations}, found {num_events}")
+            logger.error(f"Too many IR events: expected {num_operations}, found {num_events}")
+            logger.error(f"Extra {num_events - num_operations} IR events found")
             output = SubmitMappingsOutput(
                 success=False,
                 message=f"Too many IR events captured. Expected {num_operations} but found {num_events}. "
@@ -95,10 +124,18 @@ class SubmitMappings(Tool):
                 mapped_required=[],
                 mapped_optional=[],
             )
+            logger.info("Returning failure response due to too many IR events")
         else:
+            logger.info("Perfect match: number of events equals number of operations")
             # Get the most recent events that match our operations count
             relevant_events = recent_events[-num_operations:]  # Take the last N events
+            logger.debug(f"Selected {len(relevant_events)} most recent events for mapping")
             
+            logger.debug("Event-to-operation mapping:")
+            for i, (operation, event) in enumerate(zip(all_operations, relevant_events)):
+                logger.debug(f"  {i+1}. '{operation}' -> {event}")
+            
+            logger.info("Saving device mapping to file system")
             success = save_device_mapping(
                 device_key=input_data.device_key,
                 required_operations=input_data.required_operations,
@@ -109,7 +146,10 @@ class SubmitMappings(Tool):
             if success:
                 num_required = len(input_data.required_operations)
                 num_optional = len(input_data.optional_operations)
-                logger.info(f"Successfully saved device mapping for '{input_data.device_key}': {num_required} required, {num_optional} optional operations")
+                logger.info(f"✓ Successfully saved device mapping for '{input_data.device_key}'")
+                logger.info(f"  Required operations mapped: {num_required}")
+                logger.info(f"  Optional operations mapped: {num_optional}")
+                logger.info(f"  Total mappings created: {num_operations}")
                 output = SubmitMappingsOutput(
                     success=True,
                     message=f"Successfully mapped {num_operations} operations for device '{input_data.device_key}': "
@@ -118,8 +158,14 @@ class SubmitMappings(Tool):
                     mapped_required=input_data.required_operations,
                     mapped_optional=input_data.optional_operations,
                 )
+                logger.info("Returning success response")
             else:
-                logger.error(f"Failed to save device mapping for '{input_data.device_key}' - file system error")
+                logger.error(f"✗ Failed to save device mapping for '{input_data.device_key}' - file system error")
+                logger.error("This could be due to:")
+                logger.error("  - Insufficient file system permissions")
+                logger.error("  - Disk space issues")
+                logger.error("  - Invalid file path")
+                logger.error("  - Device registry corruption")
                 output = SubmitMappingsOutput(
                     success=False,
                     message=f"Failed to save device mapping for '{input_data.device_key}'. "
@@ -128,5 +174,7 @@ class SubmitMappings(Tool):
                     mapped_required=[],
                     mapped_optional=[],
                 )
+                logger.info("Returning failure response due to file system error")
         
+        logger.info(f"=== Submit mappings operation completed ===")
         return ToolResponse.from_model(output)
