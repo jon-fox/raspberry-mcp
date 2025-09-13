@@ -88,6 +88,32 @@ class SubmitMappings(Tool):
             logger.debug("Recent IR events details:")
             for i, event in enumerate(recent_events):
                 logger.debug(f"  Event {i+1}: {event}")
+                
+                # Log decoded IR codes and analysis if available
+                analysis = event.get('analysis', {})
+                if analysis:
+                    protocol = analysis.get('protocol', 'Unknown')
+                    code = analysis.get('code', 'N/A')
+                    logger.info(f"  Event {i+1} IR Code: Protocol={protocol}, Code={code}")
+                    
+                    if protocol != 'Unknown':
+                        address = analysis.get('address')
+                        command = analysis.get('command')
+                        if address is not None and command is not None:
+                            logger.info(f"    Address: 0x{address:02X}, Command: 0x{command:02X}")
+                        
+                        # Log verification status for protocols that support it
+                        if analysis.get('verified'):
+                            logger.info(f"    ✓ Protocol verification passed")
+                        elif 'verified' in analysis and not analysis['verified']:
+                            logger.warning(f"    ✗ Protocol verification failed")
+                    
+                    # Log signal fingerprint for pattern matching
+                    pulse_count = event.get('pulse_count', 0)
+                    total_duration = event.get('total_duration_us', 0)
+                    logger.debug(f"    Signal characteristics: {pulse_count} pulses, {total_duration}μs duration")
+                else:
+                    logger.warning(f"  Event {i+1}: No IR code analysis available (older format)")
         else:
             logger.warning("No recent IR events found")
         
@@ -131,9 +157,29 @@ class SubmitMappings(Tool):
             relevant_events = recent_events[-num_operations:]  # Take the last N events
             logger.debug(f"Selected {len(relevant_events)} most recent events for mapping")
             
-            logger.debug("Event-to-operation mapping:")
+            logger.info("=== IR Code to Operation Mapping ===")
             for i, (operation, event) in enumerate(zip(all_operations, relevant_events)):
-                logger.debug(f"  {i+1}. '{operation}' -> {event}")
+                analysis = event.get('analysis', {})
+                protocol = analysis.get('protocol', 'Unknown')
+                code = analysis.get('code', 'N/A')
+                signal_num = event.get('signal_number', i+1)
+                
+                logger.info(f"  {i+1}. Operation '{operation}' mapped to:")
+                logger.info(f"      Signal #{signal_num}: {protocol} protocol, Code: {code}")
+                
+                if protocol != 'Unknown':
+                    address = analysis.get('address')
+                    command = analysis.get('command')
+                    if address is not None and command is not None:
+                        logger.info(f"      Address: 0x{address:02X}, Command: 0x{command:02X}")
+                    
+                    if analysis.get('verified'):
+                        logger.info(f"      ✓ Verified {protocol} protocol")
+                else:
+                    logger.warning(f"      ⚠ Unknown protocol - mapped by timing pattern only")
+                
+                logger.debug(f"  Full event data: {event}")
+            logger.info("=== End IR Code Mapping ===")
             
             logger.info("Saving device mapping to file system")
             success = save_device_mapping(
@@ -150,6 +196,20 @@ class SubmitMappings(Tool):
                 logger.info(f"  Required operations mapped: {num_required}")
                 logger.info(f"  Optional operations mapped: {num_optional}")
                 logger.info(f"  Total mappings created: {num_operations}")
+                
+                # Log summary of mapped IR codes
+                logger.info(f"=== Mapped IR Codes Summary for '{input_data.device_key}' ===")
+                protocols_used = set()
+                for i, (operation, event) in enumerate(zip(all_operations, relevant_events)):
+                    analysis = event.get('analysis', {})
+                    protocol = analysis.get('protocol', 'Unknown')
+                    code = analysis.get('code', 'N/A')
+                    protocols_used.add(protocol)
+                    logger.info(f"  {operation}: {protocol} {code}")
+                
+                logger.info(f"Protocols detected: {', '.join(sorted(protocols_used))}")
+                logger.info(f"=== End Mapping Summary ===")
+                
                 output = SubmitMappingsOutput(
                     success=True,
                     message=f"Successfully mapped {num_operations} operations for device '{input_data.device_key}': "

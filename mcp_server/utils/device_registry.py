@@ -69,13 +69,36 @@ def save_device_mapping(
         # Extract protocol and tx_device from first event (should be consistent)
         if ir_events:
             first_event = ir_events[0]
-            device_mapping["protocol"] = first_event.get("protocol", "unknown")
-            device_mapping["tx_device"] = first_event.get("tx_device", "unknown")
+            # Handle new analyzed event structure
+            analysis = first_event.get("analysis", {})
+            device_mapping["protocol"] = analysis.get("protocol", "unknown")
+            # tx_device might not be available in our current structure
+            device_mapping["tx_device"] = first_event.get("tx_device", "raspberry_pi_ir")
         
         # Map each operation to its corresponding IR event
         for i, (operation, event) in enumerate(zip(all_operations, ir_events)):
-            # Store the IR code directly for easy lookup
-            device_mapping["codes"][operation] = event.get("code", event.get("hex_code", ""))
+            # Get analysis data from the new structure
+            analysis = event.get("analysis", {})
+            ir_code = analysis.get("code", "unknown")
+            
+            # Store comprehensive IR information for this operation
+            operation_data = {
+                "code": ir_code,
+                "protocol": analysis.get("protocol", "unknown"),
+                "address": analysis.get("address"),
+                "command": analysis.get("command"),
+                "verified": analysis.get("verified", False),
+                "timing_data": event.get("timing_data", []),
+                "signal_number": event.get("signal_number"),
+                "pulse_count": event.get("pulse_count", 0),
+                "total_duration_us": event.get("total_duration_us", 0),
+                "pattern_type": analysis.get("pattern_type"),
+                "captured_at": event.get("timestamp", datetime.now()).isoformat() if hasattr(event.get("timestamp", datetime.now()), 'isoformat') else str(event.get("timestamp", datetime.now()))
+            }
+            
+            # Store both the simple code (for backward compatibility) and detailed data
+            device_mapping["codes"][operation] = ir_code
+            device_mapping[f"{operation}_details"] = operation_data
         
         # Update or add device
         devices[device_key] = device_mapping
@@ -105,6 +128,46 @@ def load_device_mapping(device_key: str) -> Dict[str, Any] | None:
     except Exception as e:
         print(f"Error loading device mapping: {e}")
         return {}
+
+def get_device_operation_details(device_key: str, operation: str) -> Dict[str, Any] | None:
+    """Get detailed IR analysis data for a specific device operation.
+    
+    Args:
+        device_key: Device identifier
+        operation: Operation name (e.g., 'power_on', 'volume_up')
+        
+    Returns:
+        Detailed IR analysis data or None if not found
+    """
+    try:
+        devices = _load_devices()
+        device = devices.get(device_key)
+        if device:
+            return device.get(f"{operation}_details")
+        return None
+    except Exception as e:
+        print(f"Error getting operation details: {e}")
+        return None
+
+def get_device_ir_code(device_key: str, operation: str) -> str | None:
+    """Get the IR code for a specific device operation.
+    
+    Args:
+        device_key: Device identifier  
+        operation: Operation name
+        
+    Returns:
+        IR code string or None if not found
+    """
+    try:
+        devices = _load_devices()
+        device = devices.get(device_key)
+        if device:
+            return device.get("codes", {}).get(operation)
+        return None
+    except Exception as e:
+        print(f"Error getting IR code: {e}")
+        return None
 
 def list_devices() -> List[str]:
     """List all registered device keys.
