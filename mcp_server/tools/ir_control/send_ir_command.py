@@ -111,7 +111,14 @@ class SendIRCommand(Tool):
 
         # Send IR command using GPIO17 directly
         logger.info(f"Transmitting IR signal via GPIO17...")
-        ok, detail = await ir_send(protocol, hex_code)
+        
+        # Get raw timing data for Generic protocols
+        raw_timing_data = None
+        if protocol.lower() == 'generic' and operation_details:
+            raw_timing_data = operation_details.get("raw_timing_data")
+            logger.info(f"Using raw timing data for Generic protocol: {len(raw_timing_data) if raw_timing_data else 0} pulses")
+        
+        ok, detail = await ir_send(protocol, hex_code, raw_timing_data=raw_timing_data)
 
         # Create response with enhanced messaging
         if ok:

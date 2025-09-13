@@ -344,8 +344,9 @@ class IRListenerManager:
             return {
                 'protocol': 'Generic',
                 'code': generic_code,
+                'raw_timing_data': timing_data,  # Store the actual timing data for transmission
                 'fingerprint_based': True,
-                'note': 'Generated from timing pattern - may work for replay'
+                'note': 'Generated from timing pattern - uses raw timing for replay'
             }
         
         return {}

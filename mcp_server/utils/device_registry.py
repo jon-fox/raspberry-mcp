@@ -89,6 +89,7 @@ def save_device_mapping(
                 "command": analysis.get("command"),
                 "verified": analysis.get("verified", False),
                 "timing_data": event.get("timing_data", []),
+                "raw_timing_data": analysis.get("raw_timing_data", event.get("timing_data", [])),  # For Generic protocols
                 "signal_number": event.get("signal_number"),
                 "pulse_count": event.get("pulse_count", 0),
                 "total_duration_us": event.get("total_duration_us", 0),
