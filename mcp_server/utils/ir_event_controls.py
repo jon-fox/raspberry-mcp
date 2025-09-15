@@ -139,24 +139,24 @@ async def _send_space(pi, tx_pin: int, duration_us: int):
     pi.set_PWM_dutycycle(tx_pin, 0)
     await asyncio.sleep(duration_us / 1_000_000)  # Convert microseconds to seconds
 
-async def ir_send(protocol: str, hex_code: str, device_path: str | None = None, raw_timing_data: list | None = None) -> tuple[bool, str]:
-    """Send IR command using pigpio directly on GPIO17.
+async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = None) -> tuple[bool, str]:
+    """Send IR command using pigpio directly on GPIO17 with optimal settings.
     
-    Uses the same approach as loopback_test.py for reliable IR transmission.
+    Uses maximum power and 3x repeats for best range and reliability.
     Requires pigpiod service to be running: sudo systemctl start pigpiod
     
     Args:
         protocol: IR protocol (e.g., 'nec', 'sony', 'rc5', 'generic')
         hex_code: Hexadecimal code to transmit
-        device_path: Unused, kept for compatibility
         raw_timing_data: Raw timing data for Generic protocols
     
     Returns:
         Tuple of (success: bool, message: str)
     """
-    TX_PIN = 17  # GPIO17 (pin 11) - same as loopback test
-    CARRIER_FREQ = 38000  # 38kHz carrier frequency (most common)
-    DUTY_CYCLE = 200  # Strong drive (0-255) - same as loopback test
+    TX_PIN = 17  # GPIO17 (pin 11) - hardcoded for reliability
+    CARRIER_FREQ = 38000  # 38kHz carrier frequency (industry standard)
+    DUTY_CYCLE = 255  # Maximum drive strength for best range
+    REPEAT_COUNT = 3  # Optimal repeat count for reliability
     
     pi = None
     try:
@@ -169,21 +169,34 @@ async def ir_send(protocol: str, hex_code: str, device_path: str | None = None, 
         pi.set_mode(TX_PIN, pigpio.OUTPUT)
         pi.set_PWM_frequency(TX_PIN, CARRIER_FREQ)
         
-        # Convert hex code and encode for protocol
-        success = await _send_ir_protocol(pi, TX_PIN, DUTY_CYCLE, protocol, hex_code, raw_timing_data)
+        success_count = 0
         
-        if not success:
+        # Send the command multiple times for better range/reliability
+        for attempt in range(REPEAT_COUNT):
+            # Convert hex code and encode for protocol
+            success = await _send_ir_protocol(pi, TX_PIN, DUTY_CYCLE, protocol, hex_code, raw_timing_data)
+            
+            if success:
+                success_count += 1
+                
+            # Add delay between repeats (except for the last one)
+            if attempt < REPEAT_COUNT - 1:
+                await asyncio.sleep(0.1)  # 100ms delay between repeats
+        
+        if success_count == 0:
             pi.stop()
             return False, f"Unsupported protocol '{protocol}' or invalid hex code '{hex_code}'"
         
         # Cleanup
         pi.stop()
         
-        # Enhanced success message
+        # Enhanced success message with transmission details
+        repeat_info = f" repeated {REPEAT_COUNT}x" if REPEAT_COUNT > 1 else ""
+        
         if protocol.lower() == 'generic' and raw_timing_data:
-            return True, f"Raw IR timing pattern sent on GPIO{TX_PIN} at {CARRIER_FREQ}Hz ({len(raw_timing_data)} pulses)"
+            return True, f"Raw IR timing pattern sent on GPIO{TX_PIN} at {CARRIER_FREQ}Hz{repeat_info} ({len(raw_timing_data)} pulses, {success_count}/{REPEAT_COUNT} successful)"
         else:
-            return True, f"IR command {protocol}:{hex_code} sent on GPIO{TX_PIN} at {CARRIER_FREQ}Hz"
+            return True, f"IR command {protocol}:{hex_code} sent on GPIO{TX_PIN} at {CARRIER_FREQ}Hz{repeat_info} (max power, {success_count}/{REPEAT_COUNT} successful)"
         
     except Exception as e:
         try:

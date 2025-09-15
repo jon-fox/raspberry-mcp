@@ -15,7 +15,7 @@ class SendIRCommand(Tool):
     """Generic tool that sends IR commands to any registered device."""
 
     name = "SendIRCommand"
-    description = "Sends an IR command to a registered device. Can perform any operation that was mapped during device registration (power_on, power_off, speed_up, etc.)"
+    description = "Sends an IR command to a registered device using maximum transmission power and optimal reliability settings. Can perform any operation that was mapped during device registration (power_on, power_off, speed_up, etc.)."
     input_model = SendIRCommandRequest
     output_model = SendIRCommandResponse
 
@@ -109,8 +109,8 @@ class SendIRCommand(Tool):
                 operation=input_data.operation
             )
 
-        # Send IR command using GPIO17 directly
-        logger.info(f"Transmitting IR signal via GPIO17...")
+        # Send IR command using GPIO17 directly with optimal settings
+        logger.info(f"Transmitting IR signal via GPIO17 at maximum power (3x repeats for reliability)...")
         
         # Get raw timing data for Generic protocols
         raw_timing_data = None
