@@ -6,6 +6,9 @@
 # sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker rm -f mcppi || true'
 # sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --network host --privileged mcppi:pi'
 
+# ssh in
+# sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local
+
 # shutdown Pi after finished
 # sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'sudo shutdown now'
 
