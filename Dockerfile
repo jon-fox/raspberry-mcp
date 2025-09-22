@@ -2,10 +2,12 @@
 # sudo systemctl enable pigpiod
 # sudo systemctl start pigpiod
 # docker buildx build --platform linux/arm64 -t mcppi:pi --load .
-# docker save mcppi:pi | ssh foxj7@mcppi.local 'docker load'
-# ssh foxj7@mcppi.local 'docker rm -f mcppi || true'
-# ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --network host --privileged mcppi:pi'
-# ssh foxj7@mcppi.local 'sudo shutdown now'
+# docker save mcppi:pi | sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker load'
+# sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker rm -f mcppi || true'
+# sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --network host --privileged mcppi:pi'
+
+# shutdown Pi after finished
+# sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'sudo shutdown now'
 
 FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
