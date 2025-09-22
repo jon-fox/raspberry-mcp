@@ -1,6 +1,11 @@
 import asyncio
 import logging
-import RPi.GPIO as GPIO
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    GPIO = None
 from datetime import datetime
 import time
 
@@ -34,6 +39,10 @@ class IRListenerManager:
     
     async def start_listening(self) -> tuple[bool, str]:
         """Start the IR listener in the background."""       
+        if not GPIO_AVAILABLE:
+            logger.error("RPi.GPIO not available - IR listening requires GPIO support (Linux/Raspberry Pi)")
+            return False, "RPi.GPIO not available - IR listening requires GPIO support (Linux/Raspberry Pi)"
+            
         if self._is_listening:
             logger.info("IR listener start requested but already running")
             return True, "IR listener is already running."
@@ -62,6 +71,10 @@ class IRListenerManager:
     
     async def stop_listening(self) -> tuple[bool, str]:
         """Stop the IR listener."""
+        if not GPIO_AVAILABLE:
+            logger.warning("RPi.GPIO not available - cannot stop IR listener")
+            return False, "RPi.GPIO not available"
+            
         if not self._is_listening:
             logger.info("IR listener stop requested but not currently running")
             return True, "IR listener is not running."

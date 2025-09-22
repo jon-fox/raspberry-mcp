@@ -131,3 +131,39 @@ class ListDeviceOperationsResponse(BaseToolInput):
         description="Message providing details about the available operations",
         examples=["Device 'living_room_fan' has 2 required and 3 optional operations"],
     )
+
+
+class TestIRTransmitterRequest(BaseToolInput):
+    """Request model for testing IR transmitter."""
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"duration_minutes": 2, "interval_seconds": 2},
+                {"duration_minutes": 5, "interval_seconds": 1},
+                {},  # Use defaults
+            ]
+        }
+    )
+    
+    duration_minutes: float = Field(
+        default=2.0,
+        description="How long to run the test in minutes (max 10 minutes)",
+        ge=0.1,
+        le=10.0
+    )
+    interval_seconds: float = Field(
+        default=2.0, 
+        description="Interval between transmissions in seconds",
+        ge=0.5,
+        le=30.0
+    )
+
+
+class TestIRTransmitterResponse(BaseToolInput):
+    """Response model for IR transmitter test."""
+    
+    success: bool = Field(description="Whether IR transmissions completed successfully")
+    message: str = Field(description="Test result details")
+    transmissions_sent: int = Field(description="Number of test signals transmitted")
+    duration_seconds: float = Field(description="Actual duration of the test in seconds")

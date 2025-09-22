@@ -43,6 +43,7 @@ COPY --from=builder /app/.venv /app/.venv
 # copy app code
 COPY --from=builder /app/mcp_server /app/mcp_server
 COPY --from=builder /app/README.md /app/README.md
+COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
 EXPOSE 8000
 CMD ["uv", "run", "-m", "mcp_server.server"]

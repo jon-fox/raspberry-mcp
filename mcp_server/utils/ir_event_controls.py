@@ -1,5 +1,10 @@
 import asyncio
-import pigpio
+try:
+    import pigpio
+    PIGPIO_AVAILABLE = True
+except ImportError:
+    PIGPIO_AVAILABLE = False
+    pigpio = None
 
 async def _send_ir_protocol(pi, tx_pin: int, duty_cycle: int, protocol: str, hex_code: str, raw_timing_data: list | None = None) -> bool:
     """Encode and send IR command for specific protocol.
@@ -153,6 +158,8 @@ async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = N
     Returns:
         Tuple of (success: bool, message: str)
     """
+    if not PIGPIO_AVAILABLE:
+        return False, "pigpio not available - IR transmission requires pigpio support (Linux/Raspberry Pi)"
     TX_PIN = 17  # GPIO17 (pin 11) - hardcoded for reliability
     CARRIER_FREQ = 38000  # 38kHz carrier frequency (industry standard)
     DUTY_CYCLE = 255  # Maximum drive strength for best range

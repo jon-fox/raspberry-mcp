@@ -1,4 +1,9 @@
-import RPi.GPIO as GPIO
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    print("RPi.GPIO not available - this script requires GPIO support (Linux/Raspberry Pi)")
+    exit(1)
 import time
 
 PIN = 17  # GPIO17 (pin 11)
