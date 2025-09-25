@@ -18,12 +18,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 RUN pip install --no-cache-dir uv
 
-# ---- builder stage (has compilers) ----
-FROM base AS builder
-# Build deps for C extensions (RPi.GPIO) + crypto headers
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc python3-dev libffi-dev libssl-dev pkg-config \
- && rm -rf /var/lib/apt/lists/*
+# ---- builder stage - use python:3.12 (not slim) for build tools ----
+FROM python:3.12 AS builder
+WORKDIR /app
+
+# Install uv in the builder
+RUN pip install --no-cache-dir uv
 
 # layer cache for deps
 COPY pyproject.toml uv.lock ./
