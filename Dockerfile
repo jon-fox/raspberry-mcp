@@ -25,14 +25,14 @@ WORKDIR /app
 # Install uv in the builder
 RUN pip install --no-cache-dir uv
 
-# layer cache for deps
+# layer cache for deps - copy dependency files first
 COPY pyproject.toml uv.lock ./
 # create venv & install deps (no dev), don't install project yet
 RUN uv sync --frozen --no-dev --no-install-project
 
-# copy app into builder so venv can resolve local package if needed later
+# Copy application code LAST to prevent caching issues
 COPY mcp_server/ ./mcp_server/
-COPY README.md .
+COPY README.md ./
 
 # ---- final runtime (no compilers) ----
 FROM base AS final
@@ -40,7 +40,7 @@ WORKDIR /app
 
 # copy the prepared venv from builder
 COPY --from=builder /app/.venv /app/.venv
-# copy app code
+# copy app code from builder (this will now include your latest changes)
 COPY --from=builder /app/mcp_server /app/mcp_server
 COPY --from=builder /app/README.md /app/README.md
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml

@@ -171,7 +171,7 @@ class GetListenerStatusOutput(BaseToolInput):
                 {
                     "success": True,
                     "is_listening": True,
-                    "gpio_pin": 22,
+                    "gpio_pin": 27,
                     "total_events": 15,
                     "recent_events_1min": 3,
                     "recent_events_5min": 8,
@@ -189,7 +189,7 @@ class GetListenerStatusOutput(BaseToolInput):
         ..., description="Whether the IR listener is currently active.", examples=[True]
     )
     gpio_pin: int = Field(
-        ..., description="GPIO pin number being monitored.", examples=[22]
+        ..., description="GPIO pin number being monitored.", examples=[27]
     )
     total_events: int = Field(
         ..., description="Total number of IR signals captured since listener started.", examples=[15]

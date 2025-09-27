@@ -176,6 +176,12 @@ async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = N
         pi.set_mode(TX_PIN, pigpio.OUTPUT)
         pi.set_PWM_frequency(TX_PIN, CARRIER_FREQ)
         
+        # Add test lines here:
+        pi.set_PWM_frequency(17, 1000)  # Much slower frequency you can see
+        pi.set_PWM_dutycycle(17, 128)   # 50% duty cycle
+        await asyncio.sleep(2)          # Let it run for 2 seconds
+        pi.set_PWM_dutycycle(17, 0)     # Turn it off
+        
         success_count = 0
         
         # Send the command multiple times for better range/reliability

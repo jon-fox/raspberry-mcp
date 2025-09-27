@@ -20,7 +20,7 @@ class IRListenerManager:
     _is_listening = False
     # GPIO pin 27 is hardcoded - this should not be configurable by clients
     # The IR receiver hardware is expected to be connected to this specific pin
-    PIN = 22  # GPIO27 (pin 13), 22 for two legged one
+    PIN = 27  # GPIO27 (pin 13), 27 for two legged one
     _signal_buffer = []
     _last_signal_time = 0
     _signal_timeout = 0.1  # 100ms timeout between signals
