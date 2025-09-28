@@ -4,6 +4,7 @@
 from .ir_control import SendIRCommand
 from .ir_control import ListDeviceOperations
 from .ir_control import GetMappingGuidance
+from .ir_control import TroubleshootIR
 try:
     from .ir_control import TestIRTransmitter
     _TEST_IR_AVAILABLE = True
@@ -18,6 +19,7 @@ __all__ = [
     "SendIRCommand",
     "ListDeviceOperations", 
     "GetMappingGuidance",
+    "TroubleshootIR",
     # Device registration
     "StartIRListener",
     "StopIRListener",

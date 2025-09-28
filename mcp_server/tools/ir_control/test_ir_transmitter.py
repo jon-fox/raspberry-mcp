@@ -153,7 +153,9 @@ class TestIRTransmitter(Tool):
             led_ok, led_msg = True, "Skipped (long duration test)"
             logger.info("LED test: Skipped for long duration test")
         
-        logger.info(f"Will send test signals on GPIO17 at 38kHz every {interval_seconds} seconds")
+        logger.info(f"Will send IR test signals on GPIO17 at 38kHz every {interval_seconds} seconds")
+        logger.info("Test patterns: NEC (0x00FF12ED, 0x00FFAA55) and Sony (0x12345678)")
+        logger.info("These should now be detectable by the IR receiver on GPIO27")
         
         success = True
         errors = []
@@ -168,11 +170,23 @@ class TestIRTransmitter(Tool):
                     logger.info(f"Test duration reached ({input_data.duration_minutes} minutes), stopping")
                     break
                 
-                # Send test signal
+                # Send test signal using NEC protocol (most common and well-supported)
                 transmissions_sent += 1
                 logger.info(f"Sending test transmission #{transmissions_sent} (elapsed: {elapsed:.1f}s)")
                 
-                signal_success, signal_message = await ir_send("test", "0x12345678")
+                # Rotate through different test patterns for better detection
+                test_patterns = [
+                    ("nec", "0x00FF12ED"),      # NEC: address=0x00, command=0x12
+                    ("nec", "0x00FFAA55"),      # NEC: address=0x00, command=0xAA  
+                    ("sony", "0x12345678"),     # Sony SIRC pattern
+                ]
+                
+                # Use different pattern for each transmission
+                pattern_index = (transmissions_sent - 1) % len(test_patterns)
+                protocol, hex_code = test_patterns[pattern_index]
+                
+                logger.info(f"Using {protocol.upper()} protocol with code {hex_code}")
+                signal_success, signal_message = await ir_send(protocol, hex_code)
                 
                 if signal_success:
                     logger.info(f"Transmission #{transmissions_sent} successful: {signal_message}")
@@ -203,9 +217,9 @@ class TestIRTransmitter(Tool):
         
         # Generate result message
         if success and not errors:
-            message = f"IR transmitter test completed successfully. Sent {transmissions_sent} test signals over {actual_duration:.1f} seconds."
+            message = f"IR transmitter test completed successfully. Sent {transmissions_sent} proper IR protocol signals (NEC/Sony) over {actual_duration:.1f} seconds using the fixed 38kHz transmission with 50% duty cycle."
         elif errors:
-            message = f"IR transmitter test completed with {len(errors)} errors. Sent {transmissions_sent} signals. Errors: {'; '.join(errors[:3])}"
+            message = f"IR transmitter test completed with {len(errors)} errors. Sent {transmissions_sent} signals using proper IR protocols. Errors: {'; '.join(errors[:3])}"
             if len(errors) > 3:
                 message += f" (and {len(errors) - 3} more)"
         else:

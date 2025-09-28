@@ -131,8 +131,19 @@ async def _send_sony_command(pi, tx_pin: int, duty_cycle: int, code: int):
             await _send_space(pi, tx_pin, ZERO_SPACE)
 
 async def _send_test_burst(pi, tx_pin: int, duty_cycle: int):
-    """Send a test burst for unsupported protocols."""
-    await _send_mark(pi, tx_pin, duty_cycle, 500000)  # 0.5 second burst
+    """Send a test burst pattern for unsupported protocols."""
+    # Send a more receiver-friendly pattern instead of continuous burst
+    # Pattern: 9ms on, 4.5ms off (like NEC header), then some pulses
+    await _send_mark(pi, tx_pin, duty_cycle, 9000)   # 9ms header mark
+    await _send_space(pi, tx_pin, 4500)              # 4.5ms header space
+    
+    # Send a few test pulses 
+    for _ in range(8):
+        await _send_mark(pi, tx_pin, duty_cycle, 560)   # 560us mark
+        await _send_space(pi, tx_pin, 1690)             # 1.69ms space (like NEC '1' bit)
+    
+    # Final stop bit
+    await _send_mark(pi, tx_pin, duty_cycle, 560)   # 560us final mark
 
 async def _send_mark(pi, tx_pin: int, duty_cycle: int, duration_us: int):
     """Send IR mark (carrier on) for specified duration."""
@@ -144,16 +155,18 @@ async def _send_space(pi, tx_pin: int, duration_us: int):
     pi.set_PWM_dutycycle(tx_pin, 0)
     await asyncio.sleep(duration_us / 1_000_000)  # Convert microseconds to seconds
 
-async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = None) -> tuple[bool, str]:
+async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = None, power_boost: bool = False, carrier_freq: int = 38000) -> tuple[bool, str]:
     """Send IR command using pigpio directly on GPIO17 with optimal settings.
     
-    Uses maximum power and 3x repeats for best range and reliability.
+    Uses ~78% duty cycle and 5x repeats for strong transmission that can control actual devices.
     Requires pigpiod service to be running: sudo systemctl start pigpiod
     
     Args:
         protocol: IR protocol (e.g., 'nec', 'sony', 'rc5', 'generic')
         hex_code: Hexadecimal code to transmit
         raw_timing_data: Raw timing data for Generic protocols
+        power_boost: If True, use maximum power (255/100% duty cycle) for stubborn devices
+        carrier_freq: Carrier frequency in Hz (38000 default, try 36000 or 40000 for stubborn devices)
     
     Returns:
         Tuple of (success: bool, message: str)
@@ -161,9 +174,9 @@ async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = N
     if not PIGPIO_AVAILABLE:
         return False, "pigpio not available - IR transmission requires pigpio support (Linux/Raspberry Pi)"
     TX_PIN = 17  # GPIO17 (pin 11) - hardcoded for reliability
-    CARRIER_FREQ = 38000  # 38kHz carrier frequency (industry standard)
-    DUTY_CYCLE = 255  # Maximum drive strength for best range
-    REPEAT_COUNT = 3  # Optimal repeat count for reliability
+    CARRIER_FREQ = carrier_freq  # Use specified frequency (38000 default, but can try 36000/40000)
+    DUTY_CYCLE = 255 if power_boost else 200  # Max power if boost requested, otherwise ~78%
+    REPEAT_COUNT = 5  # Increased repeat count for stubborn devices
     
     pi = None
     try:
@@ -176,16 +189,17 @@ async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = N
         pi.set_mode(TX_PIN, pigpio.OUTPUT)
         pi.set_PWM_frequency(TX_PIN, CARRIER_FREQ)
         
-        # Add test lines here:
-        pi.set_PWM_frequency(17, 1000)  # Much slower frequency you can see
-        pi.set_PWM_dutycycle(17, 128)   # 50% duty cycle
-        await asyncio.sleep(2)          # Let it run for 2 seconds
-        pi.set_PWM_dutycycle(17, 0)     # Turn it off
+        # Ensure PWM is off initially
+        pi.set_PWM_dutycycle(TX_PIN, 0)
         
         success_count = 0
         
         # Send the command multiple times for better range/reliability
         for attempt in range(REPEAT_COUNT):
+            # Ensure proper frequency is set before each transmission
+            pi.set_PWM_frequency(TX_PIN, CARRIER_FREQ)
+            pi.set_PWM_dutycycle(TX_PIN, 0)  # Ensure it starts OFF
+            
             # Convert hex code and encode for protocol
             success = await _send_ir_protocol(pi, TX_PIN, DUTY_CYCLE, protocol, hex_code, raw_timing_data)
             
@@ -194,7 +208,7 @@ async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = N
                 
             # Add delay between repeats (except for the last one)
             if attempt < REPEAT_COUNT - 1:
-                await asyncio.sleep(0.1)  # 100ms delay between repeats
+                await asyncio.sleep(0.15)  # 150ms delay between repeats for better device compatibility
         
         if success_count == 0:
             pi.stop()
@@ -205,11 +219,13 @@ async def ir_send(protocol: str, hex_code: str, raw_timing_data: list | None = N
         
         # Enhanced success message with transmission details
         repeat_info = f" repeated {REPEAT_COUNT}x" if REPEAT_COUNT > 1 else ""
+        duty_info = "100% duty cycle (POWER BOOST)" if power_boost else "~78% duty cycle"
+        freq_info = f" at {CARRIER_FREQ}Hz" if CARRIER_FREQ != 38000 else f" at {CARRIER_FREQ}Hz"
         
         if protocol.lower() == 'generic' and raw_timing_data:
-            return True, f"Raw IR timing pattern sent on GPIO{TX_PIN} at {CARRIER_FREQ}Hz{repeat_info} ({len(raw_timing_data)} pulses, {success_count}/{REPEAT_COUNT} successful)"
+            return True, f"Raw IR timing pattern sent on GPIO{TX_PIN}{freq_info}{repeat_info} ({len(raw_timing_data)} pulses, {success_count}/{REPEAT_COUNT} successful, {duty_info})"
         else:
-            return True, f"IR command {protocol}:{hex_code} sent on GPIO{TX_PIN} at {CARRIER_FREQ}Hz{repeat_info} (max power, {success_count}/{REPEAT_COUNT} successful)"
+            return True, f"IR command {protocol}:{hex_code} sent on GPIO{TX_PIN}{freq_info}{repeat_info} ({duty_info}, {success_count}/{REPEAT_COUNT} successful)"
         
     except Exception as e:
         try:

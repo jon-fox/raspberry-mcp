@@ -1,29 +1,37 @@
 import asyncio
 import logging
-try:
-    import RPi.GPIO as GPIO
-    GPIO_AVAILABLE = True
-except ImportError:
-    GPIO_AVAILABLE = False
-    GPIO = None
-from datetime import datetime
 import time
+from datetime import datetime
+from typing import Optional, Dict, List, Tuple
+
+try:
+    import pigpio
+    PIGPIO_AVAILABLE = True
+except ImportError:
+    PIGPIO_AVAILABLE = False
+    pigpio = None
 
 logger = logging.getLogger(__name__)
 
 class IRListenerManager:
-    """Manages the background IR listener process."""
+    """Simplified IR listener using pigpio for hardware-precise timing."""
     
     _instance = None
-    _listener_task = None
     _ir_events = []
     _is_listening = False
-    # GPIO pin 27 is hardcoded - this should not be configurable by clients
-    # The IR receiver hardware is expected to be connected to this specific pin
-    PIN = 27  # GPIO27 (pin 13), 27 for two legged one
-    _signal_buffer = []
-    _last_signal_time = 0
-    _signal_timeout = 0.1  # 100ms timeout between signals
+    _pi = None  # pigpio.pi instance
+    _callback = None
+    
+    # GPIO pin 27 for IR receiver (keep consistent with original)
+    PIN = 27
+    
+    # Signal processing
+    _current_signal = []
+    _signal_start_time = 0
+    _last_edge_time = 0
+    _signal_timeout_ms = 50  # 50ms gap = end of signal
+    _signal_counter = 0
+    _recent_signals = []  # For pattern matching
     
     def __new__(cls):
         if cls._instance is None:
@@ -34,100 +42,379 @@ class IRListenerManager:
     def get_instance(cls):
         return cls()
     
+    def enable_debug_logging(self):
+        """Enable debug logging for troubleshooting."""
+        logging.getLogger(__name__).setLevel(logging.DEBUG)
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.info("Debug logging enabled for IR listener")
+    
     def is_listening(self) -> bool:
         return self._is_listening
     
-    async def start_listening(self) -> tuple[bool, str]:
-        """Start the IR listener in the background."""       
-        if not GPIO_AVAILABLE:
-            logger.error("RPi.GPIO not available - IR listening requires GPIO support (Linux/Raspberry Pi)")
-            return False, "RPi.GPIO not available - IR listening requires GPIO support (Linux/Raspberry Pi)"
+    async def start_listening(self) -> Tuple[bool, str]:
+        """Start the IR listener using pigpio callbacks."""
+        if not PIGPIO_AVAILABLE:
+            logger.error("pigpio not available - IR listening requires pigpio support")
+            return False, "pigpio not available - IR listening requires pigpio support"
             
         if self._is_listening:
-            logger.info("IR listener start requested but already running")
+            logger.info("IR listener already running")
             return True, "IR listener is already running."
         
         try:
-            logger.info(f"Initializing GPIO pin {self.PIN} for IR listening")
-            # Initialize GPIO
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            # Connect to pigpio daemon
+            logger.info("Connecting to pigpio daemon...")
+            self._pi = pigpio.pi()
             
-            # Clear any existing events
+            if not self._pi.connected:
+                logger.error("pigpiod not running - start with: sudo systemctl start pigpiod")
+                return False, "pigpiod not running - start with: sudo systemctl start pigpiod"
+            
+            logger.info(f"Connected to pigpiod, setting up IR receiver on GPIO{self.PIN}")
+            
+            # Configure GPIO pin
+            self._pi.set_mode(self.PIN, pigpio.INPUT)
+            self._pi.set_pull_up_down(self.PIN, pigpio.PUD_UP)
+            
+            # Read initial GPIO state
+            initial_state = self._pi.read(self.PIN)
+            logger.info(f"GPIO{self.PIN} initial state: {initial_state}")
+            
+            # Clear events and reset counters
             self._ir_events.clear()
-            self._signal_buffer.clear()
+            self._recent_signals.clear()
+            self._current_signal = []
+            self._signal_counter = 0
             
-            # Start the listener task
-            logger.info("Starting IR listener background task")
-            self._listener_task = asyncio.create_task(self._listen_loop())
+            # Set up callback for both edges (pigpio handles timing precisely)
+            logger.info(f"Setting up GPIO callback on pin {self.PIN} for EITHER_EDGE")
+            self._callback = self._pi.callback(self.PIN, pigpio.EITHER_EDGE, self._gpio_callback)
+            logger.info(f"Callback setup complete: {self._callback}")
+            
             self._is_listening = True
-            
-            logger.info(f"IR listener started successfully on GPIO{self.PIN} and ready to capture signals")
-            return True, f"IR listener started successfully on GPIO pin {self.PIN}. Press remote buttons to capture signals."
+            logger.info(f"IR listener started successfully on GPIO{self.PIN}")
+            logger.info("Ready to capture IR signals - press remote buttons now!")
+            return True, f"IR listener started on GPIO{self.PIN}. Press remote buttons to capture signals."
             
         except Exception as e:
-            logger.error(f"Failed to start IR listener: {str(e)}")
-            return False, f"Failed to start IR listener: {str(e)}"
+            logger.error(f"Failed to start IR listener: {e}")
+            if self._pi and self._pi.connected:
+                self._pi.stop()
+                self._pi = None
+            return False, f"Failed to start IR listener: {e}"
     
-    async def stop_listening(self) -> tuple[bool, str]:
+    async def stop_listening(self) -> Tuple[bool, str]:
         """Stop the IR listener."""
-        if not GPIO_AVAILABLE:
-            logger.warning("RPi.GPIO not available - cannot stop IR listener")
-            return False, "RPi.GPIO not available"
-            
         if not self._is_listening:
-            logger.info("IR listener stop requested but not currently running")
+            logger.info("IR listener not running")
             return True, "IR listener is not running."
         
         try:
             logger.info("Stopping IR listener")
             self._is_listening = False
             
-            if self._listener_task:
-                logger.info("Cancelling IR listener background task")
-                self._listener_task.cancel()
-                try:
-                    await self._listener_task
-                except asyncio.CancelledError:
-                    logger.info("IR listener task cancelled successfully")
-                    pass
-                self._listener_task = None
+            # Cancel callback
+            if self._callback:
+                self._callback.cancel()
+                self._callback = None
             
-            logger.info("Cleaning up GPIO resources")
-            GPIO.cleanup()
+            # Disconnect from pigpio
+            if self._pi and self._pi.connected:
+                self._pi.stop()
+                self._pi = None
             
             events_count = len(self._ir_events)
             logger.info(f"IR listener stopped successfully. Captured {events_count} events total")
-            return True, "IR listener stopped successfully."
+            return True, f"IR listener stopped successfully. Captured {events_count} events."
             
         except Exception as e:
-            logger.error(f"Failed to stop IR listener: {str(e)}")
-            return False, f"Failed to stop IR listener: {str(e)}"
+            logger.error(f"Failed to stop IR listener: {e}")
+            return False, f"Failed to stop IR listener: {e}"
     
-    def get_recent_events(self, horizon_s: int = 20) -> list:
+    def _gpio_callback(self, gpio: int, level: int, tick: int):
+        """Hardware-timed GPIO callback."""
+        if not self._is_listening:
+            return
+        
+        current_time_us = tick
+        
+        # Handle signal start (first edge)
+        if not self._current_signal:
+            self._signal_start_time = current_time_us
+            self._last_edge_time = current_time_us
+            self._current_signal = []
+            return
+        
+        # Calculate duration since last edge
+        duration_us = self._tick_diff(current_time_us, self._last_edge_time)
+        
+        # If gap is too long, finish previous signal and start new one
+        if duration_us > (self._signal_timeout_ms * 1000):
+            self._finish_current_signal()
+            self._signal_start_time = current_time_us
+            self._last_edge_time = current_time_us
+            self._current_signal = []
+            return
+        
+        # Add pulse to current signal
+        state = 'high' if level else 'low'
+        self._current_signal.append((state, duration_us))
+        self._last_edge_time = current_time_us
+        
+        # Check for signal completion
+        asyncio.create_task(self._check_signal_completion())
+    
+    async def _check_signal_completion(self):
+        """Check if current signal should be completed (non-blocking)."""
+        if not self._current_signal:
+            return
+        
+        # Wait a bit to see if more pulses come
+        await asyncio.sleep(self._signal_timeout_ms / 1000.0)
+        
+        # If no new pulses arrived, finish the signal
+        if self._current_signal and self._is_listening:
+            current_time = self._pi.get_current_tick() if self._pi else 0
+            time_since_last = self._tick_diff(current_time, self._last_edge_time)
+            
+            if time_since_last > (self._signal_timeout_ms * 1000):
+                self._finish_current_signal()
+    
+    def _finish_current_signal(self):
+        """Process and store the completed signal."""
+        if not self._current_signal:
+            return
+        
+        self._signal_counter += 1
+        signal_number = self._signal_counter
+        timing_data = self._current_signal.copy()
+        
+        logger.info(f"Signal {signal_number} completed: {len(timing_data)} pulses")
+        
+        try:
+            # Analyze the signal
+            analysis = self._analyze_signal(timing_data, signal_number)
+            
+            # Check for matching previous signals
+            matched = self._find_matching_signal(timing_data)
+            if matched:
+                logger.info(f"Signal {signal_number} matches previous: {matched['code']}")
+                analysis.update(matched)
+                analysis['matched_previous'] = True
+            else:
+                self._store_recent_signal(timing_data, analysis)
+            
+            # Create event
+            total_duration = sum(duration for _, duration in timing_data)
+            ir_event = {
+                'timestamp': datetime.now(),
+                'type': 'ir_signal',
+                'signal_number': signal_number,
+                'timing_data': timing_data,
+                'total_duration_us': total_duration,
+                'pulse_count': len(timing_data),
+                'analysis': analysis
+            }
+            
+            self._ir_events.append(ir_event)
+            
+            logger.info(f"Signal {signal_number}: {analysis.get('protocol', 'Unknown')} - {analysis.get('code', 'N/A')}")
+            
+        except Exception as e:
+            logger.error(f"Signal {signal_number} processing failed: {e}")
+            # Still store the raw signal
+            ir_event = {
+                'timestamp': datetime.now(),
+                'type': 'ir_signal',
+                'signal_number': signal_number,
+                'timing_data': timing_data,
+                'total_duration_us': sum(duration for _, duration in timing_data),
+                'pulse_count': len(timing_data),
+                'analysis': {'protocol': 'Raw', 'code': f'0xRAW{signal_number:04X}', 'error': str(e)}
+            }
+            self._ir_events.append(ir_event)
+        
+        # Clear current signal
+        self._current_signal = []
+    
+    def _tick_diff(self, tick1: int, tick2: int) -> int:
+        """Calculate difference between pigpio ticks (handles wraparound)."""
+        return pigpio.tickDiff(tick2, tick1) if pigpio else abs(tick1 - tick2)
+    
+    def _analyze_signal(self, timing_data: List[Tuple[str, int]], signal_number: int) -> Dict:
+        """Simple, reliable signal analysis."""
+        if not timing_data:
+            return {'protocol': 'Empty', 'code': '0x00000000'}
+        
+        durations = [duration for _, duration in timing_data]
+        total_duration = sum(durations)
+        
+        # Basic validation
+        if total_duration < 1000:  # Less than 1ms
+            return {'protocol': 'Noise', 'code': '0x00000000'}
+        
+        # Simple NEC detection
+        if len(timing_data) >= 4:
+            first_low = timing_data[0][1] if timing_data[0][0] == 'low' else 0
+            first_high = timing_data[1][1] if len(timing_data) > 1 and timing_data[1][0] == 'high' else 0
+            
+            # Look for NEC-like AGC (9ms low, 4.5ms high)
+            if 7000 <= first_low <= 12000 and 3000 <= first_high <= 6000:
+                # Try to decode NEC
+                nec_result = self._decode_nec(timing_data)
+                if nec_result:
+                    return nec_result
+        
+        # Fallback: create stable hash-based code
+        # Normalize timings to reduce noise sensitivity
+        normalized = []
+        for state, duration in timing_data[:16]:  # Use first 16 pulses
+            # Round to nearest 100μs for stability
+            normalized_duration = round(duration / 100) * 100
+            normalized.append(normalized_duration)
+        
+        # Create stable hash
+        code_hash = hash(tuple(normalized)) & 0xFFFFFFFF
+        
+        return {
+            'protocol': 'Generic',
+            'code': f'0x{code_hash:08X}',
+            'pulse_count': len(timing_data),
+            'total_duration_us': total_duration,
+            'normalized_timing': normalized
+        }
+    
+    def _decode_nec(self, timing_data: List[Tuple[str, int]]) -> Optional[Dict]:
+        """Simple NEC decoding."""
+        if len(timing_data) < 34:  # Need at least 34 pulses for NEC
+            return None
+        
+        try:
+            # Skip AGC (first 2 pulses)
+            data_bits = []
+            
+            for i in range(2, min(66, len(timing_data) - 1), 2):
+                if i + 1 >= len(timing_data):
+                    break
+                
+                low_pulse = timing_data[i][1]
+                high_pulse = timing_data[i + 1][1]
+                
+                # Simple bit detection based on high pulse length
+                if 300 <= low_pulse <= 800:  # Valid low pulse
+                    if 300 <= high_pulse <= 800:  # Short high = bit 0
+                        data_bits.append(0)
+                    elif 1200 <= high_pulse <= 2200:  # Long high = bit 1
+                        data_bits.append(1)
+                    else:
+                        break  # Invalid pulse
+                else:
+                    break
+            
+            if len(data_bits) >= 16:
+                # Extract address and command (first 16 bits)
+                address = 0
+                command = 0
+                
+                for i in range(8):
+                    if i < len(data_bits) and data_bits[i]:
+                        address |= (1 << i)
+                
+                for i in range(8):
+                    if (i + 8) < len(data_bits) and data_bits[i + 8]:
+                        command |= (1 << i)
+                
+                return {
+                    'protocol': 'NEC',
+                    'address': address,
+                    'command': command,
+                    'code': f'0x{address:02X}{command:02X}0000',
+                    'bits_decoded': len(data_bits)
+                }
+        except Exception as e:
+            logger.debug(f"NEC decode failed: {e}")
+        
+        return None
+    
+    def _find_matching_signal(self, timing_data: List[Tuple[str, int]]) -> Optional[Dict]:
+        """Find if this signal matches a recent one."""
+        if not timing_data:
+            return None
+        
+        # Create normalized pattern for matching
+        normalized = []
+        for state, duration in timing_data[:16]:
+            normalized.append(round(duration / 100) * 100)
+        
+        # Check recent signals
+        for recent in self._recent_signals[-10:]:
+            if self._patterns_match(normalized, recent['normalized']):
+                return recent['analysis']
+        
+        return None
+    
+    def _patterns_match(self, pattern1: List[int], pattern2: List[int], tolerance: float = 0.2) -> bool:
+        """Check if two timing patterns match within tolerance."""
+        if len(pattern1) != len(pattern2):
+            return False
+        
+        matches = 0
+        for p1, p2 in zip(pattern1, pattern2):
+            if p1 == 0 and p2 == 0:
+                matches += 1
+            elif p1 == 0 or p2 == 0:
+                continue  # Skip zero values
+            else:
+                diff = abs(p1 - p2) / max(p1, p2)
+                if diff <= tolerance:
+                    matches += 1
+        
+        return matches >= len(pattern1) * 0.8  # 80% match required
+    
+    def _store_recent_signal(self, timing_data: List[Tuple[str, int]], analysis: Dict):
+        """Store signal for future matching."""
+        normalized = []
+        for state, duration in timing_data[:16]:
+            normalized.append(round(duration / 100) * 100)
+        
+        self._recent_signals.append({
+            'normalized': normalized,
+            'analysis': analysis,
+            'timestamp': time.time()
+        })
+        
+        # Keep only recent signals
+        if len(self._recent_signals) > 20:
+            self._recent_signals = self._recent_signals[-20:]
+    
+    def get_recent_events(self, horizon_s: int = 20) -> List[Dict]:
         """Get IR events from the last horizon_s seconds."""
         cutoff_time = datetime.now().timestamp() - horizon_s
         recent_events = [
             event for event in self._ir_events 
             if event['timestamp'].timestamp() > cutoff_time
         ]
-        logger.info(f"Retrieving {len(recent_events)} IR events from last {horizon_s} seconds (total events: {len(self._ir_events)})")
+        logger.info(f"Retrieved {len(recent_events)} IR events from last {horizon_s} seconds")
         return recent_events
     
     def clear_events(self):
         """Clear all recorded IR events."""
         events_count = len(self._ir_events)
         self._ir_events.clear()
-        self._signal_buffer.clear()
+        self._recent_signals.clear()
         logger.info(f"Cleared {events_count} IR events from memory")
     
-    def get_listener_status(self) -> dict:
-        """Get detailed status information about the IR listener."""
+    def get_listener_status(self) -> Dict:
+        """Get detailed status information."""
         status = {
             'is_listening': self._is_listening,
             'gpio_pin': self.PIN,
             'total_events': len(self._ir_events),
-            'listener_task_active': self._listener_task is not None and not self._listener_task.done(),
+            'pigpio_connected': self._pi.connected if self._pi else False,
             'recent_events_1min': len(self.get_recent_events(60)),
             'recent_events_5min': len(self.get_recent_events(300))
         }
@@ -137,498 +424,30 @@ class IRListenerManager:
             status['latest_event_time'] = latest_event['timestamp'].isoformat()
             status['latest_event_type'] = latest_event.get('type', 'unknown')
             
-        logger.info(f"IR listener status: {status}")
         return status
     
-    async def _listen_loop(self):
-        """Background loop that listens for IR signals."""
-        logger.info("IR listener loop started - monitoring GPIO pin for IR signals")
-        signal_count = 0
-        last_log_time = time.time()
+    def test_gpio_monitoring(self, duration_seconds: int = 10):
+        """Test GPIO monitoring for debugging - shows all GPIO state changes."""
+        if not self._pi or not self._pi.connected:
+            logger.error("pigpio not connected")
+            return
         
-        try:
-            while self._is_listening:
-                current_time = time.time()
-                
-                # Log heartbeat every 30 seconds to show listener is alive
-                if current_time - last_log_time > 30:
-                    logger.info(f"IR listener heartbeat - still monitoring GPIO{self.PIN}, {signal_count} signals detected so far")
-                    last_log_time = current_time
-                
-                # Check for IR signal (active low)
-                if GPIO.input(self.PIN) == 0:
-                    signal_start_time = time.time()
-                    signal_count += 1
-                    
-                    logger.info(f"IR signal detected! (Signal #{signal_count}) - Starting to capture timing data")
-                    
-                    # Capture the signal timing pattern
-                    timing_data = []
-                    last_state = 0
-                    state_start_time = signal_start_time
-                    
-                    # Record the initial low state
-                    while GPIO.input(self.PIN) == 0 and self._is_listening:
-                        await asyncio.sleep(0.00005)  # 50 microsecond sampling
-                    
-                    if self._is_listening:
-                        low_duration = (time.time() - state_start_time) * 1000000  # Convert to microseconds
-                        timing_data.append(('low', int(low_duration)))
-                        logger.debug(f"Signal {signal_count}: Initial low pulse = {int(low_duration)}μs")
-                    
-                    # Continue capturing the rest of the signal
-                    state_start_time = time.time()
-                    timeout_start = time.time()
-                    max_signal_duration = 0.5  # 500ms max signal duration
-                    
-                    while self._is_listening and (time.time() - timeout_start) < max_signal_duration:
-                        current_pin_state = GPIO.input(self.PIN)
-                        
-                        if current_pin_state != last_state:
-                            # State changed, record the duration
-                            duration = (time.time() - state_start_time) * 1000000  # microseconds
-                            state_name = 'low' if last_state == 0 else 'high'
-                            timing_data.append((state_name, int(duration)))
-                            
-                            last_state = current_pin_state
-                            state_start_time = time.time()
-                        
-                        await asyncio.sleep(0.00005)  # 50 microsecond sampling
-                    
-                    # Record the final state if signal ended
-                    if timing_data:
-                        final_duration = (time.time() - state_start_time) * 1000000
-                        final_state = 'low' if last_state == 0 else 'high'
-                        timing_data.append((final_state, int(final_duration)))
-                    
-                    # Create IR event with captured timing
-                    timestamp = datetime.now()
-                    total_duration = sum(duration for _, duration in timing_data)
-                    
-                    # Analyze and decode the signal
-                    signal_analysis = self._analyze_ir_signal(timing_data, signal_count)
-                    
-                    ir_event = {
-                        'timestamp': timestamp,
-                        'type': 'ir_signal',
-                        'signal_number': signal_count,
-                        'timing_data': timing_data,
-                        'total_duration_us': total_duration,
-                        'pulse_count': len(timing_data),
-                        'analysis': signal_analysis
-                    }
-                    
-                    self._ir_events.append(ir_event)
-                    
-                    logger.info(f"Signal {signal_count} captured: {len(timing_data)} pulses, {total_duration}μs total duration")
-                    logger.info(f"Signal {signal_count} analysis: Protocol={signal_analysis.get('protocol', 'Unknown')}, Code={signal_analysis.get('code', 'N/A')}")
-                    logger.debug(f"Signal {signal_count} timing pattern: {timing_data[:10]}..." if len(timing_data) > 10 else f"Signal {signal_count} timing pattern: {timing_data}")
-                    
-                    # Log detailed signal characteristics
-                    if signal_analysis.get('protocol') != 'Unknown':
-                        logger.info(f"Signal {signal_count} decoded: {signal_analysis}")
-                    else:
-                        logger.warning(f"Signal {signal_count} could not be decoded - unknown protocol")
-                    
-                    # Log signal fingerprint for debugging
-                    fingerprint = self._generate_signal_fingerprint(timing_data)
-                    logger.debug(f"Signal {signal_count} fingerprint: {fingerprint}")
-                    
-                    # Wait a bit before looking for the next signal to avoid double-detection
-                    await asyncio.sleep(0.05)  # 50ms debounce
-                
-                else:
-                    # No signal detected, short sleep to prevent CPU spinning
-                    await asyncio.sleep(0.001)  # Check every 1ms when idle
-                
-        except asyncio.CancelledError:
-            logger.info(f"IR listener loop cancelled - captured {signal_count} signals total")
-            raise
-        except Exception as e:
-            logger.error(f"IR listener error after capturing {signal_count} signals: {e}")
-            self._is_listening = False
-            raise
-    
-    def _analyze_ir_signal(self, timing_data: list, signal_number: int) -> dict:
-        """Analyze IR signal timing data to identify protocol and decode commands."""
-        logger.debug(f"Analyzing signal {signal_number} with {len(timing_data)} pulses")
+        logger.info(f"Starting GPIO{self.PIN} monitoring test for {duration_seconds} seconds...")
+        logger.info(f"Current GPIO{self.PIN} state: {self._pi.read(self.PIN)}")
         
-        if not timing_data or len(timing_data) < 4:
-            logger.warning(f"Signal {signal_number}: Insufficient timing data for analysis")
-            return {'protocol': 'Unknown', 'reason': 'Insufficient data'}
+        # Monitor for the specified duration
+        start_time = time.time()
+        last_state = self._pi.read(self.PIN)
+        change_count = 0
         
-        # Extract pulse durations for analysis
-        pulses = [duration for state, duration in timing_data]
+        while (time.time() - start_time) < duration_seconds:
+            current_state = self._pi.read(self.PIN)
+            if current_state != last_state:
+                change_count += 1
+                timestamp = time.time()
+                logger.info(f"GPIO{self.PIN} changed: {last_state} -> {current_state} at {timestamp}")
+                last_state = current_state
+            time.sleep(0.001)  # Check every 1ms
         
-        # Log detailed timing information for unknown protocols
-        logger.debug(f"Signal {signal_number} timing analysis:")
-        logger.debug(f"  First 10 pulses: {pulses[:10]}")
-        logger.debug(f"  Min/Max/Avg: {min(pulses)}/{max(pulses)}/{sum(pulses)//len(pulses)}μs")
-        logger.debug(f"  Total duration: {sum(pulses)}μs, Pulse count: {len(pulses)}")
-        
-        # Try to identify common IR protocols
-        analysis = {
-            'protocol': 'Unknown',
-            'code': None,
-            'address': None,
-            'command': None,
-            'repeat': False,
-            'pulse_analysis': {
-                'total_pulses': len(pulses),
-                'min_pulse': min(pulses),
-                'max_pulse': max(pulses),
-                'avg_pulse': sum(pulses) // len(pulses)
-            }
-        }
-        
-        # NEC Protocol Analysis (most common)
-        nec_result = self._analyze_nec_protocol(timing_data)
-        if nec_result['protocol'] == 'NEC':
-            analysis.update(nec_result)
-            logger.info(f"Signal {signal_number}: NEC protocol detected - Address: 0x{nec_result.get('address', 0):02X}, Command: 0x{nec_result.get('command', 0):02X}")
-            return analysis
-        
-        # Sony SIRC Protocol Analysis
-        sony_result = self._analyze_sony_protocol(timing_data)
-        if sony_result['protocol'] == 'Sony':
-            analysis.update(sony_result)
-            logger.info(f"Signal {signal_number}: Sony SIRC protocol detected - Command: 0x{sony_result.get('command', 0):02X}")
-            return analysis
-        
-        # RC5 Protocol Analysis
-        rc5_result = self._analyze_rc5_protocol(timing_data)
-        if rc5_result['protocol'] == 'RC5':
-            analysis.update(rc5_result)
-            logger.info(f"Signal {signal_number}: RC5 protocol detected - Address: 0x{rc5_result.get('address', 0):02X}, Command: 0x{rc5_result.get('command', 0):02X}")
-            return analysis
-        
-        # Generic pattern analysis for unknown protocols
-        pattern_info = self._analyze_signal_pattern(timing_data)
-        analysis.update(pattern_info)
-        
-        # Try to create a usable code even for unknown protocols
-        generic_result = self._create_generic_code(timing_data, signal_number)
-        if generic_result.get('code'):
-            analysis.update(generic_result)
-            logger.info(f"Signal {signal_number}: Created generic code - {generic_result.get('code')}")
-        
-        # Enhanced logging for unknown protocols
-        logger.warning(f"Signal {signal_number}: Unknown protocol - Pattern: {pattern_info.get('pattern_type', 'Unrecognized')}")
-        logger.info(f"Signal {signal_number} detailed analysis:")
-        logger.info(f"  Pattern type: {pattern_info.get('pattern_type', 'Unknown')}")
-        logger.info(f"  First few pulses: {timing_data[:6]}...")
-        logger.info(f"  Unique pulse widths: {len(set(pulses))}")
-        logger.info(f"  Possible protocol clues:")
-        
-        # Add protocol detection hints
-        first_pulse = pulses[0] if pulses else 0
-        if first_pulse > 8000:
-            logger.info(f"    - Long initial pulse ({first_pulse}μs) suggests AGC header")
-        if len(pulses) in [24, 26, 28]:
-            logger.info(f"    - Pulse count ({len(pulses)}) suggests 12-14 bit protocol")
-        if len(pulses) in [66, 68, 70]:
-            logger.info(f"    - Pulse count ({len(pulses)}) suggests 32-34 bit protocol")
-        
-        return analysis
-    
-    def _create_generic_code(self, timing_data: list, signal_number: int) -> dict:
-        """Create a generic IR code for unknown protocols based on timing fingerprint."""
-        if not timing_data:
-            return {}
-        
-        # Create a hash-like code from the timing pattern
-        pulses = [duration for state, duration in timing_data]
-        
-        # Normalize timing to create a consistent pattern
-        if len(pulses) >= 4:
-            # Use first few pulses and total duration to create unique code
-            fingerprint_data = pulses[:8] + [sum(pulses), len(pulses)]
-            
-            # Create a simple hash-like code
-            code_value = 0
-            for val in fingerprint_data:
-                code_value = (code_value * 37 + val) % 0xFFFFFFFF
-            
-            # Format as hex code
-            generic_code = f"0xGEN{code_value:08X}"
-            
-            logger.debug(f"Generated generic code {generic_code} for signal {signal_number}")
-            
-            return {
-                'protocol': 'Generic',
-                'code': generic_code,
-                'raw_timing_data': timing_data,  # Store the actual timing data for transmission
-                'fingerprint_based': True,
-                'note': 'Generated from timing pattern - uses raw timing for replay'
-            }
-        
-        return {}
-    
-    def _analyze_nec_protocol(self, timing_data: list) -> dict:
-        """Analyze timing data for NEC IR protocol."""
-        logger.debug("Attempting NEC protocol analysis")
-        
-        if len(timing_data) < 34:  # NEC needs at least 34 pulses (minimum for repeat code)
-            logger.debug(f"NEC: Insufficient pulses - got {len(timing_data)}, need at least 34")
-            return {'protocol': 'Unknown', 'reason': f'Too few pulses for NEC ({len(timing_data)})'}
-        
-        # NEC protocol characteristics
-        # AGC burst: ~9ms low, ~4.5ms high
-        # Bit 0: ~560μs low, ~560μs high
-        # Bit 1: ~560μs low, ~1690μs high
-        
-        pulses = [duration for state, duration in timing_data]
-        
-        # Log first few pulses for debugging
-        logger.debug(f"NEC analysis - First 6 pulses: {pulses[:6]}")
-        
-        # Check for NEC AGC burst (first two pulses)
-        agc_low = pulses[0]
-        agc_high = pulses[1] if len(pulses) > 1 else 0
-        
-        logger.debug(f"NEC AGC check: low={agc_low}μs (expect ~9000), high={agc_high}μs (expect ~4500)")
-        
-        if agc_low < 7000 or agc_low > 11000:  # More flexible range ~9ms ±2ms
-            logger.debug(f"NEC: AGC low pulse out of range: {agc_low}μs (expected 7000-11000μs)")
-            return {'protocol': 'Unknown', 'reason': f'No NEC AGC burst - got {agc_low}μs'}
-        
-        if agc_high < 3000 or agc_high > 6000:  # More flexible range ~4.5ms ±1.5ms  
-            logger.debug(f"NEC: AGC high pulse out of range: {agc_high}μs (expected 3000-6000μs)")
-            return {'protocol': 'Unknown', 'reason': f'No NEC AGC response - got {agc_high}μs'}
-        
-        logger.debug("NEC AGC burst detected - analyzing data bits")
-        
-        # Check for NEC repeat code (short sequence)
-        if len(timing_data) < 68:  # Less than full 32-bit command
-            if len(timing_data) == 4:  # Repeat code pattern
-                logger.info("NEC repeat code detected")
-                return {
-                    'protocol': 'NEC',
-                    'code': 'REPEAT',
-                    'repeat': True,
-                    'verified': True
-                }
-            else:
-                logger.debug(f"NEC: Incomplete data - got {len(timing_data)} pulses, need 68 for full command")
-                return {'protocol': 'Unknown', 'reason': f'Incomplete NEC data ({len(timing_data)} pulses)'}
-        
-        # Decode data bits (skip AGC burst)
-        data_bits = []
-        bit_errors = []
-        
-        for i in range(2, min(len(pulses) - 1, 66), 2):  # Process pairs of pulses
-            if i + 1 >= len(pulses):
-                break
-                
-            low_pulse = pulses[i]
-            high_pulse = pulses[i + 1]
-            bit_num = (i - 2) // 2
-            
-            # NEC bit timing analysis - more flexible ranges
-            if 300 <= low_pulse <= 900:  # ~560μs ±240μs (more flexible)
-                if 300 <= high_pulse <= 900:  # Bit 0
-                    data_bits.append(0)
-                    logger.debug(f"NEC bit {bit_num}: 0 (low={low_pulse}, high={high_pulse})")
-                elif 1200 <= high_pulse <= 2200:  # Bit 1  
-                    data_bits.append(1)
-                    logger.debug(f"NEC bit {bit_num}: 1 (low={low_pulse}, high={high_pulse})")
-                else:
-                    error_msg = f"Bit {bit_num}: Invalid high pulse {high_pulse}μs"
-                    bit_errors.append(error_msg)
-                    logger.debug(f"NEC: {error_msg}")
-                    break
-            else:
-                error_msg = f"Bit {bit_num}: Invalid low pulse {low_pulse}μs"
-                bit_errors.append(error_msg)
-                logger.debug(f"NEC: {error_msg}")
-                break
-        
-        logger.debug(f"NEC decoded {len(data_bits)} bits, errors: {bit_errors}")
-        
-        if len(data_bits) >= 32:
-            # Convert bits to bytes
-            address = self._bits_to_byte(data_bits[0:8])
-            address_inv = self._bits_to_byte(data_bits[8:16])
-            command = self._bits_to_byte(data_bits[16:24])
-            command_inv = self._bits_to_byte(data_bits[24:32])
-            
-            logger.debug(f"NEC bytes: addr={address:02X}, addr_inv={address_inv:02X}, cmd={command:02X}, cmd_inv={command_inv:02X}")
-            
-            # Verify inverse bytes
-            if address == (address_inv ^ 0xFF) and command == (command_inv ^ 0xFF):
-                logger.info(f"NEC protocol verified: Address=0x{address:02X}, Command=0x{command:02X}")
-                return {
-                    'protocol': 'NEC',
-                    'address': address,
-                    'command': command,
-                    'code': f"0x{address:02X}{command:02X}",
-                    'bits_decoded': len(data_bits),
-                    'verified': True
-                }
-            else:
-                logger.warning(f"NEC verification failed:")
-                logger.warning(f"  Address check: {address:02X} vs {address_inv^0xFF:02X}")
-                logger.warning(f"  Command check: {command:02X} vs {command_inv^0xFF:02X}")
-                # Still return as NEC but unverified
-                return {
-                    'protocol': 'NEC',
-                    'address': address,
-                    'command': command,
-                    'code': f"0x{address:02X}{command:02X}",
-                    'bits_decoded': len(data_bits),
-                    'verified': False,
-                    'verification_error': 'Inverse byte check failed'
-                }
-        
-        logger.debug(f"NEC decoding failed - only got {len(data_bits)} bits, need 32")
-        return {'protocol': 'Unknown', 'reason': f'NEC decoding failed - {len(data_bits)} bits, errors: {bit_errors}'}
-    
-    def _analyze_sony_protocol(self, timing_data: list) -> dict:
-        """Analyze timing data for Sony SIRC protocol."""
-        logger.debug("Attempting Sony SIRC protocol analysis")
-        
-        # Sony SIRC characteristics
-        # AGC: ~2.4ms low
-        # Bit 0: ~600μs low, ~600μs high
-        # Bit 1: ~600μs low, ~1200μs high
-        
-        if len(timing_data) < 24:  # Sony needs at least 12 bits
-            return {'protocol': 'Unknown', 'reason': 'Too few pulses for Sony'}
-        
-        pulses = [duration for state, duration in timing_data]
-        
-        # Check for Sony AGC
-        if pulses[0] < 2000 or pulses[0] > 2800:  # ~2.4ms ±400μs
-            return {'protocol': 'Unknown', 'reason': 'No Sony AGC'}
-        
-        logger.debug("Sony AGC detected")
-        
-        # Decode bits
-        data_bits = []
-        for i in range(1, len(pulses) - 1, 2):
-            low_pulse = pulses[i]
-            high_pulse = pulses[i + 1]
-            
-            if 400 <= low_pulse <= 800:  # ~600μs ±200μs
-                if 400 <= high_pulse <= 800:  # Bit 0
-                    data_bits.append(0)
-                elif 1000 <= high_pulse <= 1400:  # Bit 1
-                    data_bits.append(1)
-                else:
-                    break
-            else:
-                break
-        
-        if len(data_bits) >= 12:
-            command = self._bits_to_value(data_bits[0:7])  # 7-bit command
-            address = self._bits_to_value(data_bits[7:12])  # 5-bit address
-            
-            logger.info(f"Sony SIRC protocol detected: Address=0x{address:02X}, Command=0x{command:02X}")
-            return {
-                'protocol': 'Sony',
-                'address': address,
-                'command': command,
-                'code': f"0x{address:02X}{command:02X}",
-                'bits_decoded': len(data_bits)
-            }
-        
-        return {'protocol': 'Unknown', 'reason': 'Sony decoding failed'}
-    
-    def _analyze_rc5_protocol(self, timing_data: list) -> dict:
-        """Analyze timing data for RC5 protocol."""
-        logger.debug("Attempting RC5 protocol analysis")
-        
-        # RC5 is Manchester encoded, more complex to decode
-        # For now, just check basic characteristics
-        
-        if len(timing_data) < 28:  # RC5 has 14 bits
-            return {'protocol': 'Unknown', 'reason': 'Too few pulses for RC5'}
-        
-        pulses = [duration for state, duration in timing_data]
-        avg_pulse = sum(pulses) // len(pulses)
-        
-        # RC5 uses ~889μs base timing
-        if 700 <= avg_pulse <= 1100:
-            logger.info("RC5-like timing detected (basic check)")
-            return {
-                'protocol': 'RC5',
-                'code': 'RC5_DETECTED',
-                'note': 'Basic RC5 detection - full decoding not implemented'
-            }
-        
-        return {'protocol': 'Unknown', 'reason': 'No RC5 pattern'}
-    
-    def _analyze_signal_pattern(self, timing_data: list) -> dict:
-        """Analyze general signal patterns for unknown protocols."""
-        logger.debug("Performing generic signal pattern analysis")
-        
-        pulses = [duration for state, duration in timing_data]
-        
-        if not pulses:
-            return {'pattern_type': 'Empty'}
-        
-        # Basic statistical analysis
-        min_pulse = min(pulses)
-        max_pulse = max(pulses)
-        avg_pulse = sum(pulses) // len(pulses)
-        
-        # Pattern classification
-        if max_pulse > 5000:  # Long initial pulse suggests AGC
-            pattern_type = "AGC_BASED"
-        elif len(set(pulses)) <= 4:  # Very few unique pulse widths
-            pattern_type = "SIMPLE_ENCODING"
-        elif avg_pulse < 1000:  # Short pulses
-            pattern_type = "HIGH_FREQUENCY"
-        else:
-            pattern_type = "COMPLEX_ENCODING"
-        
-        logger.debug(f"Signal pattern classified as: {pattern_type}")
-        
-        return {
-            'pattern_type': pattern_type,
-            'pulse_stats': {
-                'min': min_pulse,
-                'max': max_pulse,
-                'avg': avg_pulse,
-                'unique_widths': len(set(pulses))
-            }
-        }
-    
-    def _bits_to_byte(self, bits: list) -> int:
-        """Convert list of bits to byte value (LSB first)."""
-        value = 0
-        for i, bit in enumerate(bits):
-            if bit:
-                value |= (1 << i)
-        return value
-    
-    def _bits_to_value(self, bits: list) -> int:
-        """Convert list of bits to integer value (MSB first)."""
-        value = 0
-        for bit in bits:
-            value = (value << 1) | bit
-        return value
-    
-    def _generate_signal_fingerprint(self, timing_data: list) -> str:
-        """Generate a unique fingerprint for the signal pattern."""
-        if not timing_data:
-            return "EMPTY"
-        
-        # Create a simplified pattern representation
-        pulses = [duration for state, duration in timing_data]
-        
-        # Normalize pulses to categories (Short, Medium, Long)
-        avg_pulse = sum(pulses) // len(pulses)
-        normalized = []
-        
-        for pulse in pulses[:20]:  # Limit to first 20 pulses for fingerprint
-            if pulse < avg_pulse * 0.7:
-                normalized.append('S')
-            elif pulse > avg_pulse * 1.3:
-                normalized.append('L')
-            else:
-                normalized.append('M')
-        
-        fingerprint = ''.join(normalized)
-        logger.debug(f"Generated signal fingerprint: {fingerprint}")
-        return fingerprint
+        logger.info(f"GPIO monitoring test complete. Detected {change_count} state changes.")
+        return change_count

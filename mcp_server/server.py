@@ -23,6 +23,7 @@ from mcp_server.tools import (
     ListDeviceOperations,
     GetMappingGuidance,
     TestIRTransmitter,
+    TroubleshootIR,
 )
 
 # Configure logging
@@ -47,6 +48,7 @@ def get_available_tools() -> List[Tool]:
         ListDeviceOperations(),
         GetMappingGuidance(),
         TestIRTransmitter(),
+        TroubleshootIR(),
     ]
     logger.info(f"Successfully initialized {len(tools)} tools")
     return tools
