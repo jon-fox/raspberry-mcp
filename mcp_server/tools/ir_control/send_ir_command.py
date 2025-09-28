@@ -118,7 +118,7 @@ class SendIRCommand(Tool):
             raw_timing_data = operation_details.get("raw_timing_data")
             logger.info(f"Using raw timing data for Generic protocol: {len(raw_timing_data) if raw_timing_data else 0} pulses")
         
-        ok, detail = await ir_send(protocol, hex_code, raw_timing_data=raw_timing_data)
+        ok, detail = ir_send(protocol, hex_code, raw_timing_data=raw_timing_data)
 
         # Create response with enhanced messaging
         if ok:

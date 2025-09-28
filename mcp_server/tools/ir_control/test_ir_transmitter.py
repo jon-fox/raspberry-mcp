@@ -186,7 +186,7 @@ class TestIRTransmitter(Tool):
                 protocol, hex_code = test_patterns[pattern_index]
                 
                 logger.info(f"Using {protocol.upper()} protocol with code {hex_code}")
-                signal_success, signal_message = await ir_send(protocol, hex_code)
+                signal_success, signal_message = ir_send(protocol, hex_code)
                 
                 if signal_success:
                     logger.info(f"Transmission #{transmissions_sent} successful: {signal_message}")

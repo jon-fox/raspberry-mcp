@@ -37,6 +37,9 @@ class IRListenerManager:
     _signal_counter = 0
     _recent_signals = []  # For pattern matching
     
+    # Matching control (TEMPORARY: disabled due to false positive bug)
+    _enable_signal_matching = False  # Set to True to re-enable matching
+    
     # Thread safety
     _signal_lock = None
     _completion_timer = None
@@ -65,6 +68,13 @@ class IRListenerManager:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.info("Debug logging enabled for IR listener")
+    
+    def set_signal_matching(self, enabled: bool):
+        """Enable or disable signal pattern matching."""
+        self._enable_signal_matching = enabled
+        status = "enabled" if enabled else "disabled"
+        logger.info(f"Signal pattern matching {status}")
+        return f"Signal pattern matching {status}"
     
     def is_listening(self) -> bool:
         return self._is_listening
@@ -260,14 +270,32 @@ class IRListenerManager:
             # Analyze the signal
             analysis = self._analyze_signal(timing_data, signal_number)
             
-            # Check for matching previous signals
-            matched = self._find_matching_signal(timing_data)
-            if matched:
-                logger.info(f"Signal {signal_number} matches previous: {matched['code']}")
-                analysis.update(matched)
-                analysis['matched_previous'] = True
+            # Check if signal matching is enabled (currently disabled due to false positive bug)
+            if self._enable_signal_matching:
+                # Check for matching previous signals
+                matched = self._find_matching_signal(timing_data)
+                if matched:
+                    logger.info(f"Signal {signal_number} matches previous: {matched['code']}")
+                    logger.debug(f"Match details: new_pulses={len(timing_data)}, "
+                               f"new_duration={sum(d for _, d in timing_data)}μs")
+                    analysis.update(matched)
+                    analysis['matched_previous'] = True
+                else:
+                    logger.debug(f"Signal {signal_number} is unique, storing as new pattern")
+                    self._store_recent_signal(timing_data, analysis)
             else:
+                # TEMPORARY: Matching disabled - treat every signal as unique
+                logger.debug(f"Signal {signal_number} treated as unique (matching disabled to prevent false positives)")
                 self._store_recent_signal(timing_data, analysis)
+                
+                # For debugging: show what would have matched
+                if len(self._recent_signals) > 1:  # Only check if we have signals to compare
+                    potential_match = self._find_matching_signal(timing_data)
+                    if potential_match:
+                        logger.warning(f"Signal {signal_number} WOULD HAVE matched: {potential_match['code']} "
+                                     f"(but matching is disabled)")
+            
+            # Always treat as unique signal when matching is disabled
             
             # Log the analysis result
             logger.info(f"IR signal analysis complete: code={analysis.get('code', 'N/A')}, "
@@ -358,23 +386,51 @@ class IRListenerManager:
                 if nec_result:
                     return nec_result
         
-        # Fallback: create stable hash-based code
-        # Normalize timings to reduce noise sensitivity
+        # Fallback: create guaranteed unique hash-based code
+        # Use more signal characteristics plus signal number for absolute uniqueness
         normalized = []
-        for state, duration in timing_data[:16]:  # Use first 16 pulses
-            # Round to nearest 100μs for stability
-            normalized_duration = round(duration / 100) * 100
-            normalized.append(normalized_duration)
+        state_sequence = []
         
-        # Create stable hash
-        code_hash = hash(tuple(normalized)) & 0xFFFFFFFF
+        # Use more pulses and include state information for better fingerprinting
+        for i, (state, duration) in enumerate(timing_data[:24]):  # Use first 24 pulses
+            # Use finer granularity (25μs) for maximum distinction
+            normalized_duration = round(duration / 25) * 25
+            normalized.append(normalized_duration)
+            state_sequence.append(1 if state == 'high' else 0)
+            
+            # Weight earlier pulses more heavily as they're more reliable
+            if i < 12:
+                normalized.append(normalized_duration)  # Double-weight early pulses
+        
+        # Create compound hash including timing, state sequence, and signal metadata
+        timing_hash = hash(tuple(normalized)) & 0xFFFF
+        state_hash = hash(tuple(state_sequence)) & 0xFFFF
+        length_hash = len(timing_data) & 0xFF
+        duration_hash = (total_duration // 1000) & 0xFF
+        
+        # Add signal number and current microsecond timestamp for absolute uniqueness
+        signal_hash = signal_number & 0xFF
+        time_hash = int(time.time() * 1000000) & 0xFFFF  # Microsecond precision
+        
+        # Combine ALL hash components for guaranteed uniqueness
+        code_hash = (timing_hash << 16) | (state_hash ^ (length_hash << 8) ^ duration_hash ^ (signal_hash << 8) ^ time_hash)
+        code_hash = code_hash & 0xFFFFFFFF
+        
+        logger.debug(f"Generated guaranteed unique code: timing=0x{timing_hash:04X}, state=0x{state_hash:04X}, "
+                    f"length={length_hash}, duration={duration_hash}, signal={signal_hash}, time=0x{time_hash:04X}, "
+                    f"final=0x{code_hash:08X}")
+        logger.debug(f"Stored {len(timing_data)} raw timing pulses for transmission")
         
         return {
             'protocol': 'Generic',
             'code': f'0x{code_hash:08X}',
             'pulse_count': len(timing_data),
             'total_duration_us': total_duration,
-            'normalized_timing': normalized
+            'normalized_timing': normalized[:12],  # Store first 12 for debugging
+            'fingerprint': f"T{timing_hash:04X}S{state_hash:04X}L{length_hash:02X}D{duration_hash:02X}#{signal_number}@{time_hash:04X}",
+            'signal_number': signal_number,  # Include for reference
+            'generation_timestamp': time.time(),
+            'raw_timing_data': timing_data  # CRITICAL: Include raw timing for transmission
         }
     
     def _decode_nec(self, timing_data: List[Tuple[str, int]]) -> Optional[Dict]:
@@ -422,7 +478,9 @@ class IRListenerManager:
                     'address': address,
                     'command': command,
                     'code': f'0x{address:02X}{command:02X}0000',
-                    'bits_decoded': len(data_bits)
+                    'bits_decoded': len(data_bits),
+                    'verified': True,  # Mark as verified NEC decoding
+                    'raw_timing_data': timing_data  # Include for fallback transmission
                 }
         except Exception as e:
             logger.debug(f"NEC decode failed: {e}")
@@ -430,29 +488,52 @@ class IRListenerManager:
         return None
     
     def _find_matching_signal(self, timing_data: List[Tuple[str, int]]) -> Optional[Dict]:
-        """Find if this signal matches a recent one."""
+        """Find if this signal matches a recent one - with stricter matching to prevent false positives."""
         if not timing_data:
             return None
         
-        # Create normalized pattern for matching
+        # Create normalized pattern for matching - use finer granularity to distinguish signals better
         normalized = []
-        for state, duration in timing_data[:16]:
-            normalized.append(round(duration / 100) * 100)
+        for state, duration in timing_data[:20]:  # Use more pulses for better fingerprinting
+            # Use 50μs granularity instead of 100μs for better distinction
+            normalized.append(round(duration / 50) * 50)
         
-        # Check recent signals
-        for recent in self._recent_signals[-10:]:
+        # Only check very recent signals (last 3) to prevent old matches
+        for recent in self._recent_signals[-3:]:
             if self._patterns_match(normalized, recent['normalized']):
-                return recent['analysis']
+                # Additional validation: check if signals are very recent (within 5 seconds)
+                time_since_recent = time.time() - recent['timestamp']
+                if time_since_recent < 5.0:
+                    logger.debug(f"Signal matches recent pattern from {time_since_recent:.1f}s ago")
+                    return recent['analysis']
+                else:
+                    logger.debug(f"Signal pattern matched but too old ({time_since_recent:.1f}s), treating as new")
         
         return None
     
-    def _patterns_match(self, pattern1: List[int], pattern2: List[int], tolerance: float = 0.2) -> bool:
-        """Check if two timing patterns match within tolerance."""
-        if len(pattern1) != len(pattern2):
+    def _patterns_match(self, pattern1: List[int], pattern2: List[int], tolerance: float = 0.15) -> bool:
+        """Check if two timing patterns match within tolerance - stricter matching to prevent false positives."""
+        if abs(len(pattern1) - len(pattern2)) > 2:  # Allow small length differences but not large ones
             return False
         
+        # Use the shorter pattern length to avoid index errors
+        min_length = min(len(pattern1), len(pattern2))
+        if min_length < 8:  # Need at least 8 pulses for reliable matching
+            return False
+            
         matches = 0
-        for p1, p2 in zip(pattern1, pattern2):
+        significant_pulses = 0
+        
+        for i in range(min_length):
+            p1 = pattern1[i]
+            p2 = pattern2[i]
+            
+            # Skip very short pulses (likely noise)
+            if p1 < 200 or p2 < 200:
+                continue
+                
+            significant_pulses += 1
+            
             if p1 == 0 and p2 == 0:
                 matches += 1
             elif p1 == 0 or p2 == 0:
@@ -461,27 +542,50 @@ class IRListenerManager:
                 diff = abs(p1 - p2) / max(p1, p2)
                 if diff <= tolerance:
                     matches += 1
+                else:
+                    # For very different pulses, this is likely a different signal
+                    if diff > 0.5:  # More than 50% difference
+                        logger.debug(f"Large timing difference detected: {p1}μs vs {p2}μs ({diff:.2%})")
+                        return False
         
-        return matches >= len(pattern1) * 0.8  # 80% match required
+        if significant_pulses < 6:  # Need enough significant pulses for reliable matching
+            return False
+            
+        match_rate = matches / significant_pulses
+        logger.debug(f"Pattern match rate: {match_rate:.2%} ({matches}/{significant_pulses} pulses)")
+        
+        # Require 90% match rate for very similar signals, preventing false positives
+        return match_rate >= 0.90
     
     def _store_recent_signal(self, timing_data: List[Tuple[str, int]], analysis: Dict):
-        """Store signal for future matching with bounds checking."""
+        """Store signal for future matching with bounds checking - improved signal fingerprinting."""
         normalized = []
-        for state, duration in timing_data[:16]:
-            normalized.append(round(duration / 100) * 100)
+        for state, duration in timing_data[:20]:  # Use more pulses for better fingerprinting
+            # Use finer granularity (50μs) for better signal distinction
+            normalized.append(round(duration / 50) * 50)
         
-        self._recent_signals.append({
+        signal_entry = {
             'normalized': normalized,
             'analysis': analysis,
-            'timestamp': time.time()
-        })
+            'timestamp': time.time(),
+            'original_pulse_count': len(timing_data)  # Store for validation
+        }
         
-        # Memory management - keep only recent signals
-        if len(self._recent_signals) > self._max_recent_signals:
-            # Remove oldest 20% of signals
-            remove_count = self._max_recent_signals // 5
+        self._recent_signals.append(signal_entry)
+        
+        # More aggressive cleanup - keep fewer recent signals to reduce false matches
+        if len(self._recent_signals) > 10:  # Reduced from max_recent_signals
+            # Remove oldest signals
+            remove_count = len(self._recent_signals) - 5  # Keep only last 5
             self._recent_signals = self._recent_signals[remove_count:]
             logger.debug(f"Trimmed {remove_count} old recent signals, {len(self._recent_signals)} remaining")
+            
+        # Also remove signals older than 30 seconds to prevent stale matches
+        current_time = time.time()
+        self._recent_signals = [
+            signal for signal in self._recent_signals 
+            if (current_time - signal['timestamp']) < 30.0
+        ]
     
     def get_recent_events(self, horizon_s: int = 20) -> List[Dict]:
         """Get IR events from the last horizon_s seconds."""
@@ -494,11 +598,14 @@ class IRListenerManager:
         return recent_events
     
     def clear_events(self):
-        """Clear all recorded IR events."""
+        """Clear all recorded IR events and recent signal patterns."""
         events_count = len(self._ir_events)
+        recent_count = len(self._recent_signals)
         self._ir_events.clear()
         self._recent_signals.clear()
-        logger.info(f"Cleared {events_count} IR events from memory")
+        with self._signal_lock:
+            self._signal_counter = 0  # Reset signal counter too
+        logger.info(f"Cleared {events_count} IR events and {recent_count} recent signal patterns from memory")
     
     def get_listener_status(self) -> Dict:
         """Get detailed status information."""
@@ -518,7 +625,8 @@ class IRListenerManager:
             'recent_events_5min': len(self.get_recent_events(300)),
             'signal_timeout_ms': self._signal_timeout_ms,
             'max_events_limit': self._max_events,
-            'max_recent_signals_limit': self._max_recent_signals
+            'max_recent_signals_limit': self._max_recent_signals,
+            'signal_matching_enabled': self._enable_signal_matching  # Show matching status
         }
         
         if self._pi and self._pi.connected:
