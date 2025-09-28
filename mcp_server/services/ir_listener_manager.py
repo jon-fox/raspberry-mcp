@@ -425,29 +425,3 @@ class IRListenerManager:
             status['latest_event_type'] = latest_event.get('type', 'unknown')
             
         return status
-    
-    def test_gpio_monitoring(self, duration_seconds: int = 10):
-        """Test GPIO monitoring for debugging - shows all GPIO state changes."""
-        if not self._pi or not self._pi.connected:
-            logger.error("pigpio not connected")
-            return
-        
-        logger.info(f"Starting GPIO{self.PIN} monitoring test for {duration_seconds} seconds...")
-        logger.info(f"Current GPIO{self.PIN} state: {self._pi.read(self.PIN)}")
-        
-        # Monitor for the specified duration
-        start_time = time.time()
-        last_state = self._pi.read(self.PIN)
-        change_count = 0
-        
-        while (time.time() - start_time) < duration_seconds:
-            current_state = self._pi.read(self.PIN)
-            if current_state != last_state:
-                change_count += 1
-                timestamp = time.time()
-                logger.info(f"GPIO{self.PIN} changed: {last_state} -> {current_state} at {timestamp}")
-                last_state = current_state
-            time.sleep(0.001)  # Check every 1ms
-        
-        logger.info(f"GPIO monitoring test complete. Detected {change_count} state changes.")
-        return change_count
