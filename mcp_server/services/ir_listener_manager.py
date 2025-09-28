@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import threading
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple
 
@@ -25,17 +26,30 @@ class IRListenerManager:
     # GPIO pin 27 for IR receiver (keep consistent with original)
     PIN = 27
     
-    # Signal processing
+    # Signal processing - fixed initialization
     _current_signal = []
     _signal_start_time = 0
     _last_edge_time = 0
-    _signal_timeout_ms = 50  # 50ms gap = end of signal
+    _last_tick = None
+    _last_level = None
+    _last_signal_time = 0
+    _signal_timeout_ms = 200  # Increased from 50ms to 200ms for better signal capture
     _signal_counter = 0
     _recent_signals = []  # For pattern matching
+    
+    # Thread safety
+    _signal_lock = None
+    _completion_timer = None
+    
+    # Memory management
+    _max_events = 1000
+    _max_recent_signals = 50
     
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            # Initialize thread safety components
+            cls._instance._signal_lock = threading.Lock()
         return cls._instance
     
     @classmethod
@@ -87,8 +101,19 @@ class IRListenerManager:
             # Clear events and reset counters
             self._ir_events.clear()
             self._recent_signals.clear()
-            self._current_signal = []
-            self._signal_counter = 0
+            
+            # Reset signal state with thread safety
+            with self._signal_lock:
+                self._current_signal = []
+                self._last_tick = None
+                self._last_level = None
+                self._last_signal_time = 0
+                self._signal_counter = 0
+            
+            # Cancel any existing timer
+            if self._completion_timer:
+                self._completion_timer.cancel()
+                self._completion_timer = None
             
             # Set up callback for both edges (pigpio handles timing precisely)
             logger.info(f"Setting up GPIO callback on pin {self.PIN} for EITHER_EDGE")
@@ -117,6 +142,11 @@ class IRListenerManager:
             logger.info("Stopping IR listener")
             self._is_listening = False
             
+            # Cancel completion timer
+            if self._completion_timer:
+                self._completion_timer.cancel()
+                self._completion_timer = None
+            
             # Cancel callback
             if self._callback:
                 self._callback.cancel()
@@ -127,65 +157,96 @@ class IRListenerManager:
                 self._pi.stop()
                 self._pi = None
             
+            # Reset state
+            with self._signal_lock:
+                self._current_signal = []
+                self._last_tick = None
+                self._last_level = None
+                self._last_signal_time = 0
+            
             events_count = len(self._ir_events)
             logger.info(f"IR listener stopped successfully. Captured {events_count} events total")
             return True, f"IR listener stopped successfully. Captured {events_count} events."
             
         except Exception as e:
-            logger.error(f"Failed to stop IR listener: {e}")
+            logger.error(f"Failed to stop IR listener: {e}", exc_info=True)
             return False, f"Failed to stop IR listener: {e}"
     
-    def _gpio_callback(self, gpio: int, level: int, tick: int):
-        """Hardware-timed GPIO callback."""
-        if not self._is_listening:
-            return
-        
-        current_time_us = tick
-        
-        # Handle signal start (first edge)
-        if not self._current_signal:
-            self._signal_start_time = current_time_us
-            self._last_edge_time = current_time_us
-            self._current_signal = []
-            return
-        
-        # Calculate duration since last edge
-        duration_us = self._tick_diff(current_time_us, self._last_edge_time)
-        
-        # If gap is too long, finish previous signal and start new one
-        if duration_us > (self._signal_timeout_ms * 1000):
-            self._finish_current_signal()
-            self._signal_start_time = current_time_us
-            self._last_edge_time = current_time_us
-            self._current_signal = []
-            return
-        
-        # Add pulse to current signal
-        state = 'high' if level else 'low'
-        self._current_signal.append((state, duration_us))
-        self._last_edge_time = current_time_us
-        
-        # Check for signal completion
-        asyncio.create_task(self._check_signal_completion())
-    
-    async def _check_signal_completion(self):
-        """Check if current signal should be completed (non-blocking)."""
-        if not self._current_signal:
-            return
-        
-        # Wait a bit to see if more pulses come
-        await asyncio.sleep(self._signal_timeout_ms / 1000.0)
-        
-        # If no new pulses arrived, finish the signal
-        if self._current_signal and self._is_listening:
-            current_time = self._pi.get_current_tick() if self._pi else 0
-            time_since_last = self._tick_diff(current_time, self._last_edge_time)
+    def _gpio_callback(self, gpio, level, tick):
+        """Handle GPIO state changes with hardware-precise timing - THREAD SAFE."""
+        try:
+            # Log callback execution for debugging (every 100th call to avoid spam)
+            if self._signal_counter % 100 == 0:
+                logger.debug(f"GPIO callback executing: gpio={gpio}, level={level}, tick={tick}")
             
-            if time_since_last > (self._signal_timeout_ms * 1000):
-                self._finish_current_signal()
+            with self._signal_lock:
+                current_time = time.time()
+                
+                # Calculate pulse duration if we have a previous tick
+                if self._last_tick is not None:
+                    duration_us = self._tick_diff(self._last_tick, tick)
+                    
+                    # Filter noise - ignore very short pulses (< 50 microseconds)
+                    if duration_us < 50:
+                        logger.debug(f"Filtering noise: {duration_us}μs pulse")
+                        return
+                    
+                    # Add pulse to current signal
+                    pulse_data = (self._last_level, duration_us)
+                    self._current_signal.append(pulse_data)
+                    self._last_signal_time = current_time
+                    
+                    # Debug log for signal activity (only log significant milestones)
+                    signal_length = len(self._current_signal)
+                    if signal_length == 1:
+                        logger.debug(f"New signal started - first pulse: {pulse_data}")
+                    elif signal_length % 50 == 0:
+                        logger.debug(f"Signal growing: {signal_length} pulses")
+                
+                # Update state
+                self._last_tick = tick
+                self._last_level = level
+                self._last_edge_time = tick
+                
+                # Cancel any existing completion timer
+                if self._completion_timer:
+                    self._completion_timer.cancel()
+                
+                # Start new completion timer (synchronous, thread-safe)
+                self._completion_timer = threading.Timer(
+                    self._signal_timeout_ms / 1000.0,
+                    self._complete_signal_sync
+                )
+                self._completion_timer.start()
+                
+        except Exception as e:
+            logger.error(f"Error in GPIO callback: {e}", exc_info=True)
+            # Reset state on error to prevent corruption
+            with self._signal_lock:
+                self._current_signal = []
+                self._last_tick = None
+                self._last_level = None
+    
+    def _complete_signal_sync(self):
+        """Complete signal processing - called synchronously from timer thread."""
+        try:
+            with self._signal_lock:
+                if not self._current_signal or not self._is_listening:
+                    return
+                
+                # Check if enough time has passed since last pulse
+                current_time = time.time()
+                time_since_last = (current_time - self._last_signal_time) * 1000  # Convert to ms
+                
+                if time_since_last >= self._signal_timeout_ms:
+                    logger.debug(f"Completing signal after {time_since_last:.1f}ms timeout")
+                    self._finish_current_signal()
+                
+        except Exception as e:
+            logger.error(f"Error completing signal: {e}", exc_info=True)
     
     def _finish_current_signal(self):
-        """Process and store the completed signal."""
+        """Process and store the completed signal - MUST be called with _signal_lock held."""
         if not self._current_signal:
             return
         
@@ -208,6 +269,10 @@ class IRListenerManager:
             else:
                 self._store_recent_signal(timing_data, analysis)
             
+            # Log the analysis result
+            logger.info(f"IR signal analysis complete: code={analysis.get('code', 'N/A')}, "
+                       f"protocol={analysis.get('protocol', 'unknown')}")
+            
             # Create event
             total_duration = sum(duration for _, duration in timing_data)
             ir_event = {
@@ -220,12 +285,20 @@ class IRListenerManager:
                 'analysis': analysis
             }
             
+            # Add event with bounds checking
             self._ir_events.append(ir_event)
+            
+            # Memory management - keep only recent events
+            if len(self._ir_events) > self._max_events:
+                # Remove oldest 10% of events
+                remove_count = self._max_events // 10
+                self._ir_events = self._ir_events[remove_count:]
+                logger.debug(f"Trimmed {remove_count} old events, {len(self._ir_events)} remaining")
             
             logger.info(f"Signal {signal_number}: {analysis.get('protocol', 'Unknown')} - {analysis.get('code', 'N/A')}")
             
         except Exception as e:
-            logger.error(f"Signal {signal_number} processing failed: {e}")
+            logger.error(f"Signal {signal_number} processing failed: {e}", exc_info=True)
             # Still store the raw signal
             ir_event = {
                 'timestamp': datetime.now(),
@@ -242,8 +315,24 @@ class IRListenerManager:
         self._current_signal = []
     
     def _tick_diff(self, tick1: int, tick2: int) -> int:
-        """Calculate difference between pigpio ticks (handles wraparound)."""
-        return pigpio.tickDiff(tick2, tick1) if pigpio else abs(tick1 - tick2)
+        """Calculate difference between pigpio ticks (handles wraparound robustly)."""
+        if pigpio:
+            try:
+                return pigpio.tickDiff(tick1, tick2)
+            except Exception as e:
+                logger.debug(f"pigpio.tickDiff failed: {e}, using fallback")
+        
+        # More robust fallback for tick wraparound
+        # pigpio ticks are 32-bit microsecond counters that wrap every ~71 minutes
+        diff = tick2 - tick1
+        
+        # Handle wraparound case
+        if diff < -2147483648:  # Negative wraparound
+            diff += 4294967296  # Add 2^32
+        elif diff > 2147483647:  # Positive wraparound  
+            diff -= 4294967296  # Subtract 2^32
+            
+        return abs(diff)
     
     def _analyze_signal(self, timing_data: List[Tuple[str, int]], signal_number: int) -> Dict:
         """Simple, reliable signal analysis."""
@@ -376,7 +465,7 @@ class IRListenerManager:
         return matches >= len(pattern1) * 0.8  # 80% match required
     
     def _store_recent_signal(self, timing_data: List[Tuple[str, int]], analysis: Dict):
-        """Store signal for future matching."""
+        """Store signal for future matching with bounds checking."""
         normalized = []
         for state, duration in timing_data[:16]:
             normalized.append(round(duration / 100) * 100)
@@ -387,9 +476,12 @@ class IRListenerManager:
             'timestamp': time.time()
         })
         
-        # Keep only recent signals
-        if len(self._recent_signals) > 20:
-            self._recent_signals = self._recent_signals[-20:]
+        # Memory management - keep only recent signals
+        if len(self._recent_signals) > self._max_recent_signals:
+            # Remove oldest 20% of signals
+            remove_count = self._max_recent_signals // 5
+            self._recent_signals = self._recent_signals[remove_count:]
+            logger.debug(f"Trimmed {remove_count} old recent signals, {len(self._recent_signals)} remaining")
     
     def get_recent_events(self, horizon_s: int = 20) -> List[Dict]:
         """Get IR events from the last horizon_s seconds."""
@@ -414,14 +506,39 @@ class IRListenerManager:
             'is_listening': self._is_listening,
             'gpio_pin': self.PIN,
             'total_events': len(self._ir_events),
+            'pigpio_available': PIGPIO_AVAILABLE,
             'pigpio_connected': self._pi.connected if self._pi else False,
+            'callback_active': self._callback is not None,
+            'completion_timer_active': self._completion_timer is not None,
+            'listener_task_active': self._is_listening and (self._pi.connected if self._pi else False),
+            'signal_counter': self._signal_counter,
+            'recent_signals_cached': len(self._recent_signals),
+            'current_signal_pulses': len(self._current_signal),
             'recent_events_1min': len(self.get_recent_events(60)),
-            'recent_events_5min': len(self.get_recent_events(300))
+            'recent_events_5min': len(self.get_recent_events(300)),
+            'signal_timeout_ms': self._signal_timeout_ms,
+            'max_events_limit': self._max_events,
+            'max_recent_signals_limit': self._max_recent_signals
         }
+        
+        if self._pi and self._pi.connected:
+            try:
+                current_gpio_state = self._pi.read(self.PIN)
+                status['current_gpio_state'] = current_gpio_state
+            except Exception as e:
+                status['gpio_read_error'] = str(e)
         
         if self._ir_events:
             latest_event = self._ir_events[-1]
             status['latest_event_time'] = latest_event['timestamp'].isoformat()
             status['latest_event_type'] = latest_event.get('type', 'unknown')
+            status['latest_event_code'] = latest_event.get('analysis', {}).get('code', 'N/A')
             
+        # Log the status for debugging
+        logger.info(f"IR listener status: listening={status['is_listening']}, "
+                   f"connected={status['pigpio_connected']}, "
+                   f"events={status['total_events']}, "
+                   f"gpio_state={status.get('current_gpio_state', 'unknown')}, "
+                   f"timer_active={status['completion_timer_active']}")
+        
         return status
