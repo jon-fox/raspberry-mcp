@@ -12,7 +12,7 @@
 ### 1. Configure Raspberry Pi
 
 ```bash
-# Enable Avahi for .local hostname resolution
+# Enable Avahi for .local hostname resolution, so we can connect with ssh to the pi without using the ip address
 sudo apt install -y avahi-daemon
 sudo systemctl enable avahi-daemon
 sudo systemctl start avahi-daemon
@@ -42,29 +42,14 @@ Build and deploy the containerized server:
 # Set your Pi password
 export PI_PASSWORD='your_password'
 
-# Deploy using the provided script
+# Deploy using the provided script, default image name in script is mcppi:v2
 ./deploy.sh
 ```
 
 The deployment script handles:
-- Building ARM64 Docker image
-- Transferring to Raspberry Pi
+- Building ARM64 Docker image using dockerx
+- Transferring to Raspberry Pi via ssh
 - Starting container with privileged access for GPIO
-
-### Option B: Direct Installation
-
-```bash
-# SSH into Raspberry Pi
-ssh user@mcppi.local
-
-# Clone repository and install
-git clone <repository>
-cd raspberry-mcp
-uv sync --python 3.12
-
-# Start server
-uv run -m mcp_server.server --host 0.0.0.0 --port 8000
-```
 
 ## Device Registration Workflow
 
@@ -76,7 +61,7 @@ Ask the MCP to get mapping guidance for your device type. This calls the `GetMap
 
 "What operations should I map for a fan?"
 
-Returns suggested operations like `speed_up`, `speed_down`, `oscillate`, etc.
+Returns suggested operations like `speed_up`, `speed_down`, `power_on`, etc.
 
 ### 2. Start IR Listener
 
@@ -94,14 +79,13 @@ Press buttons on your remote in this order:
 1. Required operations first: `power_on`, `power_off`
 2. Optional operations next: `speed_up`, `speed_down`, etc.
 
-Wait 1-2 seconds between button presses.
-
+The signals should automatically be received
 
 ### 4. Register Device Mappings
 
-Instruct the MCP to register your device with the captured signals. This calls the `SubmitMappings` tool:
+Instruct the MCP to register your device with the captured signals in the order the buttons were pressed. This calls the `SubmitMappings` tool:
 
-"Register the living room fan with power_on and power_off as required operations, and speed_up, speed_down, and oscillate as optional operations. Use the signals captured in the last 20 seconds."
+"Submit the mappings for the living room fan, I pressed power on, power off, speed up, and speed down in the last 2 minutes."
 
 The tool matches captured signals to operations in chronological order. Device configuration is saved to `/home/pi/.raspberry-mcp/devices.json`.
 
