@@ -86,6 +86,8 @@ Tell the MCP to start listening for IR signals. This calls the `StartIRListener`
 
 The listener automatically monitors GPIO 27 and captures signal timing data.
 
+![alt text](images/start_ir_listener.png)
+
 ### 3. Capture IR Signals
 
 Press buttons on your remote in this order:
@@ -94,6 +96,7 @@ Press buttons on your remote in this order:
 
 Wait 1-2 seconds between button presses.
 
+
 ### 4. Register Device Mappings
 
 Instruct the MCP to register your device with the captured signals. This calls the `SubmitMappings` tool:
@@ -101,6 +104,16 @@ Instruct the MCP to register your device with the captured signals. This calls t
 "Register the living room fan with power_on and power_off as required operations, and speed_up, speed_down, and oscillate as optional operations. Use the signals captured in the last 20 seconds."
 
 The tool matches captured signals to operations in chronological order. Device configuration is saved to `/home/pi/.raspberry-mcp/devices.json`.
+
+![alt text](images/submit_mappings.png)
+
+### 5. Clear IR Events
+
+There is also an option to clear IR events if we want to start fresh and start listening again.
+
+"Clear the IR events" will clear the events from the IR listener
+
+![alt text](images/clear_ir_events.png)
 
 ## Device Control
 
@@ -113,6 +126,8 @@ Tell the MCP to control your device. This calls the `SendIRCommand` tool:
 "Turn on the living room fan"
 
 Transmits IR signal via GPIO 17 at 38kHz with 78% duty cycle, repeated 5x for reliability.
+
+![alt text](images/send_ir_command.png)
 
 ### List Available Operations
 
