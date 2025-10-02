@@ -34,7 +34,7 @@ uv sync --python 3.12
 
 ## Deployment Options
 
-### Option A: Docker Deployment (Recommended)
+### Docker Deployment
 
 Build and deploy the containerized server:
 
