@@ -164,3 +164,4 @@ Request a transmitter test to verify hardware functionality:
 - Docker container requires `--privileged` flag for GPIO access
 - Device mappings persist across restarts
 - Pattern matching temporarily disabled to prevent false positives
+
