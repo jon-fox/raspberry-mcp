@@ -15,6 +15,10 @@ except ImportError as e:
 # Device registration tools
 from .register_devices import StartIRListener, StopIRListener, ClearIREvents, SubmitMappings, GetListenerStatus
 
+# Sensor tools
+from .humidity_sensor import ReadHumiditySensor
+from .photo_sensor import ReadPhotoSensor
+
 __all__ = [
     "SendIRCommand",
     "ListDeviceOperations", 
@@ -26,6 +30,9 @@ __all__ = [
     "ClearIREvents", 
     "SubmitMappings",
     "GetListenerStatus",
+    # Sensors
+    "ReadHumiditySensor",
+    "ReadPhotoSensor",
 ]
 
 if _TEST_IR_AVAILABLE:

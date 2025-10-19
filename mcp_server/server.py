@@ -24,6 +24,9 @@ from mcp_server.tools import (
     GetMappingGuidance,
     TestIRTransmitter,
     TroubleshootIR,
+    # Sensor tools
+    ReadHumiditySensor,
+    ReadPhotoSensor,
 )
 
 # Configure logging
@@ -49,6 +52,9 @@ def get_available_tools() -> List[Tool]:
         GetMappingGuidance(),
         TestIRTransmitter(),
         TroubleshootIR(),
+        # Sensor tools
+        ReadHumiditySensor(),
+        ReadPhotoSensor(),
     ]
     logger.info(f"Successfully initialized {len(tools)} tools")
     return tools
