@@ -9,6 +9,7 @@ dependencies = [
     "pigpio>=1.78",
     "rpi-gpio>=0.7.1; sys_platform == 'linux'",
     "adafruit-circuitpython-dht>=4.0.9; sys_platform == 'linux'",
+    "gpiod>=2.0.0; sys_platform == 'linux'",
     "pydantic>=2.0.0",
     "atomic-agents>=2.2.0",
 ]

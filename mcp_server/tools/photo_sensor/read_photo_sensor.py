@@ -2,7 +2,6 @@
 
 from typing import Dict, Any
 import logging
-import RPi.GPIO as GPIO
 
 from mcp_server.tools.photo_sensor.photo_sensor_models import (
     ReadPhotoSensorInput,
@@ -40,20 +39,27 @@ class ReadPhotoSensor(Tool):
         Returns:
             A response with light level (bright/dark)
         """
-        logger.info(f"Reading photo sensor on GPIO pin {GPIO_PIN_27}")
+        logger.info(f"=== Starting photo sensor read on GPIO pin {GPIO_PIN_27} ===")
         
         try:
-            # Setup GPIO
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(GPIO_PIN_27, GPIO.IN)
+            import gpiod
+            
+            logger.debug("Imported gpiod library")
+            
+            # Open GPIO chip (usually gpiochip0 on Raspberry Pi)
+            chip = gpiod.Chip('gpiochip0')
             
             try:
-                # Read sensor state
-                sensor_state = GPIO.input(GPIO_PIN_27)
+                # Get the GPIO line and configure as input
+                line = chip.get_line(GPIO_PIN_27)
+                line.request(consumer="photo_sensor", type=gpiod.LINE_REQ_DIR_IN)
+                
+                # Read sensor state (0 = dark, 1 = bright for most photo sensors)
+                sensor_state = line.get_value()
                 is_bright = bool(sensor_state)
                 
                 light_level = "Bright" if is_bright else "Dark"
-                logger.info(f"Photo sensor reading: {light_level}")
+                logger.info(f"✓ Photo sensor reading: {light_level} (GPIO {GPIO_PIN_27} = {sensor_state})")
                 
                 output = ReadPhotoSensorOutput(
                     success=True,
@@ -61,22 +67,25 @@ class ReadPhotoSensor(Tool):
                     message=f"Light detected: {light_level}",
                 )
             finally:
-                # Clean up GPIO
-                GPIO.cleanup()
+                # Release the line
+                if 'line' in locals():
+                    line.release()
+                chip.close()
             
         except ImportError as e:
-            logger.error(f"Required libraries not available: {e}")
+            logger.error(f"✗ Required libraries not available: {e}")
             output = ReadPhotoSensorOutput(
                 success=False,
                 is_bright=False,
-                message=f"GPIO library not installed: {str(e)}. Install 'RPi.GPIO' package.",
+                message=f"GPIO library not installed: {str(e)}. Install 'gpiod' package.",
             )
         except Exception as e:
-            logger.error(f"Unexpected error reading photo sensor: {e}", exc_info=True)
+            logger.error(f"✗ Unexpected error reading photo sensor: {e}", exc_info=True)
             output = ReadPhotoSensorOutput(
                 success=False,
                 is_bright=False,
                 message=f"Unexpected error reading sensor: {str(e)}",
             )
         
+        logger.info(f"=== Photo sensor read complete. Success: {output.success} ===")
         return ToolResponse.from_model(output)

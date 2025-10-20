@@ -744,6 +744,22 @@ wheels = [
 ]
 
 [[package]]
+name = "gpiod"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/74/cb43c6e2fe74cf1567160ccbf54db176f72481e5ac58567684a262672c7c/gpiod-2.3.0.tar.gz", hash = "sha256:daa840ed5b691e7078a9cf21c79fe813b9a91c3ed0bdbafae0181c7b98b80300", size = 57304, upload-time = "2025-02-19T13:05:38.181Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/64/95b821e38ddeb0a2eeec51d7d7b1c7bbdde9e4a821bcf1b674d882ec22af/gpiod-2.3.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9c6b680b27092daa5fc9bad651329fd2195c9bc78d9956c40e8b6d1c73927397", size = 103337, upload-time = "2025-02-19T13:05:17.913Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/15/175710d6eb9f0e63646c7540ba93ca49ff26693cf87b414f7369e34c6f45/gpiod-2.3.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d7f34b8594d40b95ffb0c28f798fd44c38bf5199d56c6fd6d578d5ba106018f7", size = 103138, upload-time = "2025-02-19T13:05:20.088Z" },
+    { url = "https://files.pythonhosted.org/packages/51/58/078331e62b9f7c633cf961a8a4db85b97ffb059d21ff365a2a57ea8c7a39/gpiod-2.3.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:6f828513d456ed0ca4f9d5e2c02ca6337cd2b4e0934e1dc22c5398b8ab90fbe1", size = 101482, upload-time = "2025-02-19T13:05:21.523Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/f0/4e6cac036971891678aaf31324b209ab2573ad8b22dd31bd3c63b75005f9/gpiod-2.3.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:40bb477f09bad2d716e7b04405c8b3156f2bc009d235cc2f576a86cee7de2f74", size = 101105, upload-time = "2025-02-19T13:05:23.677Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/08/c68d099da0eb545e83132978d3e556803bd3fa90bcfc14d0842d78fa4718/gpiod-2.3.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7fdc3f63a277f8ae193f0c9b565bbd48e525e94c39cd463acd7b06250bf26507", size = 103244, upload-time = "2025-02-19T13:05:25.807Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/f1/1fc0c546ae4e7350615d98796df50e13235bbf5f0dfeab272f2f2a548671/gpiod-2.3.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:660b613e5b88a9376fae85197b66e04e2381e04c98e234c3d3f70d567b52ee18", size = 103025, upload-time = "2025-02-19T13:05:27.237Z" },
+    { url = "https://files.pythonhosted.org/packages/69/9b/01983ca816929667d09735f22316d14d03b5a9c003d2341d507fce167559/gpiod-2.3.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:626808ec493f954edfe4b8860842fd9fbbdcdc65209c6efdb02e81acd6b9afdc", size = 101675, upload-time = "2025-02-19T13:05:28.732Z" },
+    { url = "https://files.pythonhosted.org/packages/04/90/39845f3c357fe5925c404f138f81b2db2eb30e0333c5ab08e41bdbf124a6/gpiod-2.3.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:5b82d05e86c72f11de32bef0abee76192c7fb60a216470c76e822bb5c207fc9b", size = 101162, upload-time = "2025-02-19T13:05:30.144Z" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1788,6 +1804,7 @@ dependencies = [
     { name = "adafruit-circuitpython-dht", marker = "sys_platform == 'linux'" },
     { name = "atomic-agents" },
     { name = "fastmcp" },
+    { name = "gpiod", marker = "sys_platform == 'linux'" },
     { name = "pigpio" },
     { name = "pydantic" },
     { name = "rpi-gpio", marker = "sys_platform == 'linux'" },
@@ -1798,6 +1815,7 @@ requires-dist = [
     { name = "adafruit-circuitpython-dht", marker = "sys_platform == 'linux'", specifier = ">=4.0.9" },
     { name = "atomic-agents", specifier = ">=2.2.0" },
     { name = "fastmcp", specifier = ">=2.11.3" },
+    { name = "gpiod", marker = "sys_platform == 'linux'", specifier = ">=2.0.0" },
     { name = "pigpio", specifier = ">=1.78" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "rpi-gpio", marker = "sys_platform == 'linux'", specifier = ">=0.7.1" },
