@@ -43,19 +43,40 @@ class ReadPhotoSensor(Tool):
         
         try:
             import gpiod
+            import os
             
             logger.debug("Imported gpiod library")
             
-            # Open GPIO chip (usually gpiochip0 on Raspberry Pi)
-            chip = gpiod.Chip('gpiochip0')
+            # Check for available GPIO chips
+            gpiochip_paths = ['/dev/gpiochip0', '/dev/gpiochip1', '/dev/gpiochip2']
+            available_chips = [path for path in gpiochip_paths if os.path.exists(path)]
+            
+            if not available_chips:
+                logger.error("No GPIO chips found. Available devices: " + str(os.listdir('/dev')))
+                raise FileNotFoundError(
+                    "No GPIO chip devices found. Container may not have --device /dev/gpiochip0 mapped. "
+                    "Available /dev devices: " + ', '.join(os.listdir('/dev'))
+                )
+            
+            logger.info(f"Available GPIO chips: {available_chips}")
+            
+            # Open the first available GPIO chip
+            chip_path = available_chips[0]
+            logger.info(f"Opening GPIO chip: {chip_path}")
+            
+            # Use gpiod v2 API
+            chip = gpiod.Chip(chip_path)
             
             try:
-                # Get the GPIO line and configure as input
-                line = chip.get_line(GPIO_PIN_27)
-                line.request(consumer="photo_sensor", type=gpiod.LINE_REQ_DIR_IN)
+                # Request the GPIO line as input (gpiod v2 API)
+                line_settings = gpiod.LineSettings(direction=gpiod.line.Direction.INPUT)
+                line_request = chip.request_lines(
+                    config={GPIO_PIN_27: line_settings},
+                    consumer="photo_sensor"
+                )
                 
                 # Read sensor state (0 = dark, 1 = bright for most photo sensors)
-                sensor_state = line.get_value()
+                sensor_state = line_request.get_value(GPIO_PIN_27)
                 is_bright = bool(sensor_state)
                 
                 light_level = "Bright" if is_bright else "Dark"
@@ -67,9 +88,9 @@ class ReadPhotoSensor(Tool):
                     message=f"Light detected: {light_level}",
                 )
             finally:
-                # Release the line
-                if 'line' in locals():
-                    line.release()
+                # Release the line request
+                if 'line_request' in locals():
+                    line_request.release()
                 chip.close()
             
         except ImportError as e:

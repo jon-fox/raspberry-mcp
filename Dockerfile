@@ -2,13 +2,14 @@
 # Build for Raspberry Pi 4 (arm64)
 # =========================
 # NOTE: DHT22 sensor uses adafruit-circuitpython-dht with libgpiod (Debian Trixie)
+# Photo sensor uses gpiod library which requires /dev/gpiochip0 access
 # Ensure pigpiod is stopped: sudo systemctl stop pigpiod
 #
 # Build and deploy:
 # docker buildx build --platform linux/arm64 -t mcppi:pi --load .
 # docker save mcppi:pi | sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker load'
 # sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker rm -f mcppi || true'
-# sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --network host --privileged --device /dev/gpiomem mcppi:pi'
+# sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'docker run -d --name mcppi -p 8000:8000 --restart unless-stopped --network host --privileged --device /dev/gpiomem --device /dev/gpiochip0 mcppi:pi'
 #
 # SSH in: sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local
 # Shutdown Pi: sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local 'sudo shutdown now'

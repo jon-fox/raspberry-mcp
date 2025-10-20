@@ -35,7 +35,7 @@ sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "sudo systemctl stop pigpiod || 
 
 # Run new container with GPIO access
 echo "Starting new container with GPIO access..."
-sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "docker run -d --name ${CONTAINER_NAME} -p 8000:8000 --restart unless-stopped --network host --privileged --device /dev/gpiomem ${IMAGE_NAME}:${IMAGE_TAG}"
+sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "docker run -d --name ${CONTAINER_NAME} -p 8000:8000 --restart unless-stopped --network host --privileged --device /dev/gpiomem --device /dev/gpiochip0 ${IMAGE_NAME}:${IMAGE_TAG}"
 
 echo "Deployment complete!"
 echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
