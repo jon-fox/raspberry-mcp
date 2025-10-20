@@ -29,9 +29,13 @@ docker save ${IMAGE_NAME}:${IMAGE_TAG} | sshpass -p "$PI_PASSWORD" ssh foxj7@mcp
 echo "Stopping existing container..."
 sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "docker rm -f ${CONTAINER_NAME} || true"
 
-# Run new container
-echo "Starting new container..."
-sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "docker run -d --name ${CONTAINER_NAME} -p 8000:8000 --restart unless-stopped --network host --privileged ${IMAGE_NAME}:${IMAGE_TAG}"
+# Stop pigpiod if running (conflicts with adafruit-circuitpython-dht)
+echo "Stopping pigpiod daemon (not needed for DHT22)..."
+sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "sudo systemctl stop pigpiod || true"
+
+# Run new container with GPIO access
+echo "Starting new container with GPIO access..."
+sshpass -p "$PI_PASSWORD" ssh foxj7@mcppi.local "docker run -d --name ${CONTAINER_NAME} -p 8000:8000 --restart unless-stopped --network host --privileged --device /dev/gpiomem ${IMAGE_NAME}:${IMAGE_TAG}"
 
 echo "Deployment complete!"
 echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
