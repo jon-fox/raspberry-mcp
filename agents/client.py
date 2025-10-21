@@ -12,6 +12,7 @@ from atomic_agents.connectors.mcp import (
 from atomic_agents.context import ChatHistory, SystemPromptGenerator
 from atomic_agents import BaseIOSchema, AtomicAgent, AgentConfig
 import sys
+import argparse
 from rich.console import Console
 from rich.table import Table
 from rich.markdown import Markdown
@@ -38,6 +39,11 @@ class MCPConfig:
 
 
 def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="MCP Agent - Execute a prompt via the agent system")
+    parser.add_argument("prompt", nargs="?", help="The prompt/query to execute (optional, will use interactive mode if not provided)")
+    args = parser.parse_args()
+
     # Use default HTTP transport settings from MCPConfig
     config = MCPConfig()
     console = Console()
@@ -157,7 +163,14 @@ def main():
 
     console.print("[bold green]HTTP Stream client ready. Type 'exit' to quit.[/bold green]")
     while True:
-        query = console.input("[bold yellow]You:[/bold yellow] ").strip()
+        # If a prompt was provided via command line, use it; otherwise prompt the user
+        if args.prompt:
+            query = args.prompt
+            # Clear the prompt so we don't reuse it in the loop
+            args.prompt = None
+        else:
+            query = console.input("[bold yellow]You:[/bold yellow] ").strip()
+        
         if query.lower() in {"exit", "quit"}:
             break
         if not query:
