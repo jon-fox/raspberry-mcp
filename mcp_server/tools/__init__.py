@@ -19,6 +19,9 @@ from .register_devices import StartIRListener, StopIRListener, ClearIREvents, Su
 from .humidity_sensor import ReadHumiditySensor
 from .photo_sensor import ReadPhotoSensor
 
+# Notification tools
+from .notifications import SendNotification
+
 __all__ = [
     "SendIRCommand",
     "ListDeviceOperations", 
@@ -33,6 +36,8 @@ __all__ = [
     # Sensors
     "ReadHumiditySensor",
     "ReadPhotoSensor",
+    # Notifications
+    "SendNotification",
 ]
 
 if _TEST_IR_AVAILABLE:

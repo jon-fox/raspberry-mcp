@@ -27,6 +27,8 @@ from mcp_server.tools import (
     # Sensor tools
     ReadHumiditySensor,
     ReadPhotoSensor,
+    # Notification tools
+    SendNotification,
 )
 
 # Configure logging
@@ -55,6 +57,8 @@ def get_available_tools() -> List[Tool]:
         # Sensor tools
         ReadHumiditySensor(),
         ReadPhotoSensor(),
+        # Notification tools
+        SendNotification(),
     ]
     logger.info(f"Successfully initialized {len(tools)} tools")
     return tools
