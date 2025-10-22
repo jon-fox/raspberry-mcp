@@ -75,9 +75,10 @@ class ReadPhotoSensor(Tool):
                     consumer="photo_sensor"
                 )
                 
-                # Read sensor state (0 = dark, 1 = bright for most photo sensors)
+                # Read sensor state
+                # LM393 photo sensor module outputs LOW (0) when bright, HIGH (1) when dark
                 sensor_state = line_request.get_value(GPIO_PIN_27)
-                is_bright = bool(sensor_state)
+                is_bright = not bool(sensor_state)  # Invert: 0=bright, 1=dark
                 
                 light_level = "Bright" if is_bright else "Dark"
                 logger.info(f"✓ Photo sensor reading: {light_level} (GPIO {GPIO_PIN_27} = {sensor_state})")
