@@ -1,6 +1,7 @@
 """Tool for reading light level from photo sensor."""
 
 from typing import Dict, Any
+from datetime import datetime
 import logging
 
 from mcp_server.tools.photo_sensor.photo_sensor_models import (
@@ -80,13 +81,20 @@ class ReadPhotoSensor(Tool):
                 sensor_state = line_request.get_value(GPIO_PIN_27)
                 is_bright = not bool(sensor_state)  # Invert: 0=bright, 1=dark
                 
+                # Get timestamp
+                timestamp = datetime.utcnow().isoformat()
+                
                 light_level = "Bright" if is_bright else "Dark"
                 logger.info(f"✓ Photo sensor reading: {light_level} (GPIO {GPIO_PIN_27} = {sensor_state})")
                 
                 output = ReadPhotoSensorOutput(
                     success=True,
                     is_bright=is_bright,
+                    raw_value=sensor_state,
+                    gpio_pin=GPIO_PIN_27,
+                    timestamp=timestamp,
                     message=f"Light detected: {light_level}",
+                    sensor_info="LM393 digital photo sensor (binary output only)",
                 )
             finally:
                 # Release the line request
