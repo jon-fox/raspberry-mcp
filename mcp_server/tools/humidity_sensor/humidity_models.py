@@ -20,6 +20,7 @@ class ReadHumidityOutput(BaseToolInput):
                     "temperature_c": 22.5,
                     "temperature_f": 72.5,
                     "humidity": 45.2,
+                    "timestamp": "2025-10-22T10:30:45.123456",
                     "message": "Successfully read sensor data.",
                 }
             ]
@@ -45,6 +46,11 @@ class ReadHumidityOutput(BaseToolInput):
         None,
         description="Relative humidity as a percentage.",
         examples=[45.2],
+    )
+    timestamp: Optional[str] = Field(
+        None,
+        description="ISO 8601 timestamp when the reading was taken.",
+        examples=["2025-10-22T10:30:45.123456"],
     )
     message: str = Field(
         ...,

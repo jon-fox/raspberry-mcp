@@ -1,6 +1,7 @@
 """Tool for reading humidity and temperature from DHT22 sensor."""
 
 from typing import Dict, Any
+from datetime import datetime
 import logging
 import time
 
@@ -65,6 +66,7 @@ class ReadHumiditySensor(Tool):
                     
                     if temperature_c is not None and humidity is not None:
                         temperature_f = temperature_c * 9.0 / 5.0 + 32.0
+                        timestamp = datetime.utcnow().isoformat()
                         
                         logger.info(f"✓ Successfully read sensor on attempt {attempt}: {temperature_c:.1f}°C ({temperature_f:.1f}°F), {humidity:.1f}% humidity")
                         output = ReadHumidityOutput(
@@ -72,6 +74,7 @@ class ReadHumiditySensor(Tool):
                             temperature_c=round(temperature_c, 1),
                             temperature_f=round(temperature_f, 1),
                             humidity=round(humidity, 1),
+                            timestamp=timestamp,
                             message=f"Successfully read sensor data: {temperature_c:.1f}°C ({temperature_f:.1f}°F), {humidity:.1f}% humidity",
                         )
                         break  # Success, exit retry loop
