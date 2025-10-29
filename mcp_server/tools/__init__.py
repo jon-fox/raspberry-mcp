@@ -22,6 +22,9 @@ from .photo_sensor import ReadPhotoSensor
 # Notification tools
 from .notifications import SendNotification
 
+# Simulation tools
+from .simulation import SimulateClimate, ControlSimulatedAC
+
 __all__ = [
     "SendIRCommand",
     "ListDeviceOperations", 
@@ -38,6 +41,9 @@ __all__ = [
     "ReadPhotoSensor",
     # Notifications
     "SendNotification",
+    # Simulation
+    "SimulateClimate",
+    "ControlSimulatedAC",
 ]
 
 if _TEST_IR_AVAILABLE:

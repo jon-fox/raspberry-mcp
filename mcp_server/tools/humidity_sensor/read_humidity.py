@@ -11,15 +11,20 @@ from mcp_server.tools.humidity_sensor.humidity_models import (
 )
 from mcp_server.constants.gpio_pins import GPIO_PIN_17
 from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.utils.simulated_environment import SimulatedEnvironment
 
 logger = logging.getLogger(__name__)
 
 
 class ReadHumiditySensor(Tool):
-    """Tool that reads temperature and humidity from a DHT22 sensor."""
+    """Tool that reads temperature and humidity from a DHT22 sensor or simulation."""
 
     name = "ReadHumiditySensor"
-    description = "Reads temperature and humidity data from a DHT22 sensor connected to a GPIO pin"
+    description = (
+        "Reads temperature and humidity data from a DHT22 sensor connected to a GPIO pin. "
+        "If climate simulation is enabled, reads from simulated environment instead. "
+        "Returns temperature in both Celsius and Fahrenheit, plus relative humidity percentage."
+    )
     input_model = ReadHumidityInput
     output_model = ReadHumidityOutput
 
@@ -41,6 +46,34 @@ class ReadHumiditySensor(Tool):
         Returns:
             A response with temperature and humidity readings
         """
+        # Check if simulation mode is enabled
+        env = SimulatedEnvironment.get_instance()
+        if env.is_simulation_enabled():
+            logger.info(f"=== Reading simulated climate sensor ===")
+            success, temp_c, temp_f, humidity, message = env.read_sensor()
+            
+            if success:
+                timestamp = datetime.utcnow().isoformat()
+                logger.info(f"✓ Simulated sensor read: {temp_c:.1f}°C ({temp_f:.1f}°F), {humidity:.1f}% humidity")
+                output = ReadHumidityOutput(
+                    success=True,
+                    temperature_c=round(temp_c, 1),
+                    temperature_f=round(temp_f, 1),
+                    humidity=round(humidity, 1),
+                    timestamp=timestamp,
+                    message=message,
+                )
+            else:
+                logger.error(f"✗ Simulated sensor read failed: {message}")
+                output = ReadHumidityOutput(
+                    success=False,
+                    message=message,
+                )
+            
+            logger.info(f"=== Simulated sensor read complete ===")
+            return ToolResponse.from_model(output)
+        
+        # Real sensor reading
         logger.info(f"=== Starting DHT22 sensor read on GPIO pin {GPIO_PIN_17} ===")
         
         try:

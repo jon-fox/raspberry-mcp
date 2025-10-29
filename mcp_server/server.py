@@ -29,6 +29,9 @@ from mcp_server.tools import (
     ReadPhotoSensor,
     # Notification tools
     SendNotification,
+    # Simulation tools
+    SimulateClimate,
+    ControlSimulatedAC,
 )
 
 # Configure logging
@@ -59,6 +62,9 @@ def get_available_tools() -> List[Tool]:
         ReadPhotoSensor(),
         # Notification tools
         SendNotification(),
+        # Simulation tools
+        SimulateClimate(),
+        ControlSimulatedAC(),
     ]
     logger.info(f"Successfully initialized {len(tools)} tools")
     return tools
