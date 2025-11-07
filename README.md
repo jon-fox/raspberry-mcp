@@ -53,4 +53,3 @@ Use `ListDeviceOperations` to see what's available for each device.
 - `SubmitMappings` - Register device with operations
 - `SendIRCommand` - Control any registered device
 - `ListDeviceOperations` - Show available operations
-
