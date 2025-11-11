@@ -41,6 +41,9 @@ class SimulatedEnvironment:
         self._last_update = time.time()
         self._update_thread = None
         self._stop_thread = False
+        # AC state tracking
+        self._ac_running = False
+        self._target_temp_f = None  # Target temperature for automatic control
     
     @classmethod
     def get_instance(cls):
@@ -106,7 +109,7 @@ class SimulatedEnvironment:
         logger.info("Environment update loop stopped")
     
     def _update_environment(self):
-        """Update simulated environment - natural drift toward ambient."""
+        """Update simulated environment - natural drift toward ambient or AC cooling."""
         with self._lock:
             if not self._simulation_enabled:
                 return
@@ -115,10 +118,18 @@ class SimulatedEnvironment:
             time_delta = current_time - self._last_update
             self._last_update = current_time
             
-            # Natural drift toward ambient (gets warmer over time)
-            temp_diff = self._ambient_temp_f - self._current_temp_f
-            drift_amount = temp_diff * self._drift_rate * time_delta
-            self._current_temp_f += drift_amount
+            if self._ac_running:
+                # AC is cooling - apply cooling rate
+                cooling_amount = self._ac_cooling_rate * time_delta
+                self._current_temp_f -= cooling_amount
+                # Don't cool below a reasonable minimum
+                if self._current_temp_f < 60.0:
+                    self._current_temp_f = 60.0
+            else:
+                # Natural drift toward ambient (gets warmer over time)
+                temp_diff = self._ambient_temp_f - self._current_temp_f
+                drift_amount = temp_diff * self._drift_rate * time_delta
+                self._current_temp_f += drift_amount
     
     def get_status(self) -> dict:
         """Get current status."""
@@ -128,4 +139,28 @@ class SimulatedEnvironment:
                 'temp_f': round(self._current_temp_f, 1),
                 'temp_c': round((self._current_temp_f - 32.0) * 5.0 / 9.0, 1),
                 'humidity': round(self._current_humidity, 1),
+                'ac_running': self._ac_running,
+                'target_temp_f': self._target_temp_f,
             }
+    
+    def set_ac_running(self, running: bool):
+        """Set AC running state - called by climate control tool."""
+        with self._lock:
+            self._ac_running = running
+            logger.info(f"AC state changed: {'ON' if running else 'OFF'} at {self._current_temp_f:.1f}°F")
+    
+    def get_ac_running(self) -> bool:
+        """Get current AC running state."""
+        with self._lock:
+            return self._ac_running
+    
+    def set_target_temperature(self, target_f: float):
+        """Set target temperature for automatic control."""
+        with self._lock:
+            self._target_temp_f = target_f
+            logger.info(f"Target temperature set to {target_f:.1f}°F")
+    
+    def get_target_temperature(self) -> Optional[float]:
+        """Get target temperature."""
+        with self._lock:
+            return self._target_temp_f

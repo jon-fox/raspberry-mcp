@@ -32,6 +32,7 @@ from mcp_server.tools import (
     # Simulation tools
     SimulateClimate,
     ControlSimulatedAC,
+    ControlRealAC,
 )
 
 # Configure logging
@@ -65,6 +66,7 @@ def get_available_tools() -> List[Tool]:
         # Simulation tools
         SimulateClimate(),
         ControlSimulatedAC(),
+        ControlRealAC(),
     ]
     logger.info(f"Successfully initialized {len(tools)} tools")
     return tools

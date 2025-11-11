@@ -94,6 +94,22 @@ def turn_off(ip: str = PLUG_IP, switch_id: int = 0) -> bool:
     return set_plug(ip, False, switch_id)
 
 
+def get_ac_state(ip: str = PLUG_IP, switch_id: int = 0) -> tuple[bool, bool]:
+    """Get AC (plug) state.
+    
+    Args:
+        ip: Device IP address
+        switch_id: Switch component ID (default: 0)
+        
+    Returns:
+        Tuple of (success, is_on)
+    """
+    status = get_plug_status(ip, switch_id)
+    if status and 'output' in status:
+        return True, status['output']
+    return False, False
+
+
 if __name__ == "__main__":
     import sys
     import argparse
