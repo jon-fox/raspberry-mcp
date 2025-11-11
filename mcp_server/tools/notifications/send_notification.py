@@ -43,7 +43,6 @@ class SendNotification(Tool):
         logger.debug(f"Message: {input_data.message}")
 
         try:
-
             logger.info("Posting notification to https://ntfy.sh/pi-agent")
             response = requests.post(
                 "https://ntfy.sh/pi-agent", data=input_data.message.encode()

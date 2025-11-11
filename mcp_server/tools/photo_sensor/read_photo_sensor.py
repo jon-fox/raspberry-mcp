@@ -50,7 +50,6 @@ class ReadPhotoSensor(Tool):
 
             logger.debug("Imported gpiod library")
 
-            # Check for available GPIO chips
             gpiochip_paths = ["/dev/gpiochip0", "/dev/gpiochip1", "/dev/gpiochip2"]
             available_chips = [path for path in gpiochip_paths if os.path.exists(path)]
 
@@ -65,26 +64,20 @@ class ReadPhotoSensor(Tool):
 
             logger.info(f"Available GPIO chips: {available_chips}")
 
-            # Open the first available GPIO chip
             chip_path = available_chips[0]
             logger.info(f"Opening GPIO chip: {chip_path}")
 
-            # Use gpiod v2 API
             chip = gpiod.Chip(chip_path)
 
             try:
-                # Request the GPIO line as input (gpiod v2 API)
                 line_settings = gpiod.LineSettings(direction=gpiod.line.Direction.INPUT)
                 line_request = chip.request_lines(
                     config={GPIO_PIN_27: line_settings}, consumer="photo_sensor"
                 )
 
-                # Read sensor state
-                # LM393 photo sensor module outputs LOW (0) when bright, HIGH (1) when dark
                 sensor_state = line_request.get_value(GPIO_PIN_27)
-                is_bright = not bool(sensor_state)  # Invert: 0=bright, 1=dark
+                is_bright = not bool(sensor_state)
 
-                # Get timestamp
                 timestamp = datetime.utcnow().isoformat()
 
                 light_level = "Bright" if is_bright else "Dark"
@@ -102,7 +95,6 @@ class ReadPhotoSensor(Tool):
                     sensor_info="LM393 digital photo sensor (binary output only)",
                 )
             finally:
-                # Release the line request
                 if "line_request" in locals():
                     line_request.release()
                 chip.close()

@@ -46,11 +46,9 @@ class TestIRTransmitter(Tool):
             return False, "GPIO library not available (not running on Raspberry Pi?)"
 
         try:
-            # Test basic GPIO functionality
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(gpio_pin, GPIO.OUT)
 
-            # Test pin toggling
             GPIO.output(gpio_pin, GPIO.HIGH)
             await asyncio.sleep(0.001)
             GPIO.output(gpio_pin, GPIO.LOW)
@@ -71,11 +69,9 @@ class TestIRTransmitter(Tool):
             return False, "GPIO library not available (not running on Raspberry Pi?)"
 
         try:
-            # Send a slower, visible signal pattern
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(gpio_pin, GPIO.OUT)
 
-            # Blink pattern: 3 short, 3 long, 3 short (SOS pattern)
             pattern = [0.1, 0.1, 0.1, 0.3, 0.3, 0.3, 0.1, 0.1, 0.1]
 
             for duration in pattern:
@@ -101,7 +97,6 @@ class TestIRTransmitter(Tool):
         """Use system tools to verify IR setup."""
         results = []
 
-        # Check LIRC configuration
         try:
             result = subprocess.run(
                 ["lircd", "--version"], capture_output=True, text=True, timeout=5
@@ -113,7 +108,6 @@ class TestIRTransmitter(Tool):
         except:
             results.append("✗ LIRC daemon not found")
 
-        # Check GPIO state if available
         try:
             with open(f"/sys/class/gpio/gpio17/direction", "r") as f:
                 direction = f.read().strip()
@@ -121,7 +115,6 @@ class TestIRTransmitter(Tool):
         except:
             results.append("? GPIO17 state unknown")
 
-        # Check device tree overlays
         try:
             result = subprocess.run(
                 ["dtoverlay", "-l"], capture_output=True, text=True, timeout=5
@@ -147,18 +140,14 @@ class TestIRTransmitter(Tool):
             f"Starting IR transmitter test: {input_data.duration_minutes} minutes, {interval_seconds}s intervals"
         )
 
-        # Pre-flight verification checks
         logger.info("Performing pre-flight verification checks...")
 
-        # System verification
         sys_ok, sys_msg = await self._verify_with_system_tools()
         logger.info(f"System check: {sys_msg}")
 
-        # GPIO verification
         gpio_ok, gpio_msg = await self._verify_gpio_output()
         logger.info(f"GPIO check: {gpio_msg}")
 
-        # LED indicator test (if we have a short test duration)
         if input_data.duration_minutes <= 1:
             led_ok, led_msg = await self._test_with_led_indicator()
             logger.info(f"LED test: {led_msg}")
@@ -180,27 +169,23 @@ class TestIRTransmitter(Tool):
                 current_time = time.time()
                 elapsed = current_time - start_time
 
-                # Check if we've exceeded the duration
                 if elapsed >= duration_seconds:
                     logger.info(
                         f"Test duration reached ({input_data.duration_minutes} minutes), stopping"
                     )
                     break
 
-                # Send test signal using NEC protocol (most common and well-supported)
                 transmissions_sent += 1
                 logger.info(
                     f"Sending test transmission #{transmissions_sent} (elapsed: {elapsed:.1f}s)"
                 )
 
-                # Rotate through different test patterns for better detection
                 test_patterns = [
-                    ("nec", "0x00FF12ED"),  # NEC: address=0x00, command=0x12
-                    ("nec", "0x00FFAA55"),  # NEC: address=0x00, command=0xAA
-                    ("sony", "0x12345678"),  # Sony SIRC pattern
+                    ("nec", "0x00FF12ED"),
+                    ("nec", "0x00FFAA55"),
+                    ("sony", "0x12345678"),
                 ]
 
-                # Use different pattern for each transmission
                 pattern_index = (transmissions_sent - 1) % len(test_patterns)
                 protocol, hex_code = test_patterns[pattern_index]
 
@@ -218,9 +203,7 @@ class TestIRTransmitter(Tool):
                     errors.append(
                         f"Transmission #{transmissions_sent}: {signal_message}"
                     )
-                    # Continue sending even if some fail
 
-                # Wait for the interval (unless we're at the end)
                 next_time = start_time + (transmissions_sent * interval_seconds)
                 current_time = time.time()
 
@@ -245,7 +228,6 @@ class TestIRTransmitter(Tool):
         final_time = time.time()
         actual_duration = final_time - start_time
 
-        # Generate result message
         if success and not errors:
             message = f"IR transmitter test completed successfully. Sent {transmissions_sent} proper IR protocol signals (NEC/Sony) over {actual_duration:.1f} seconds using the fixed 38kHz transmission with 50% duty cycle."
         elif errors:
@@ -257,7 +239,6 @@ class TestIRTransmitter(Tool):
                 f"IR transmitter test failed after {transmissions_sent} transmissions."
             )
 
-        # Add verification summary
         verification_notes = []
         if gpio_ok:
             verification_notes.append("GPIO verified")

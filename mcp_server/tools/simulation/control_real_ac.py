@@ -55,15 +55,12 @@ class ClimateController:
                     "Simulation not enabled. Enable with SimulateClimate first.",
                 )
 
-            # Set target temperature
             env.set_target_temperature(target_temp_f)
 
-            # Stop existing thread if running
             if self._control_thread and self._control_thread.is_alive():
                 self._stop_control = True
                 self._control_thread.join(timeout=2)
 
-            # Start new control thread
             self._stop_control = False
             self._auto_control_enabled = True
             self._control_thread = threading.Thread(
@@ -80,7 +77,6 @@ class ClimateController:
             self._auto_control_enabled = False
             self._stop_control = True
 
-            # Turn off AC when stopping auto control
             env = SimulatedEnvironment.get_instance()
             self._set_ac_state(False, env)
 
@@ -120,7 +116,6 @@ class ClimateController:
                 self._auto_control_enabled = False
             return
 
-        # Get current state
         success, _, temp_f, _, _ = env.read_sensor()
         if not success or temp_f is None:
             logger.warning("Failed to read sensor")
@@ -133,26 +128,22 @@ class ClimateController:
 
         ac_running = env.get_ac_running()
 
-        # Apply hysteresis logic
         should_turn_on = temp_f > (target_temp + self._hysteresis_high)
         should_turn_off = temp_f <= (target_temp - self._hysteresis_low)
 
         if not ac_running and should_turn_on:
-            # Temperature too high, turn on AC
             logger.info(
                 f"[CYCLE] Turning ON AC - temp {temp_f:.1f}°F > {target_temp + self._hysteresis_high:.1f}°F"
             )
             self._set_ac_state(True, env)
 
         elif ac_running and should_turn_off:
-            # Temperature reached target, turn off AC
             logger.info(
                 f"[CYCLE] Turning OFF AC - temp {temp_f:.1f}°F <= {target_temp - self._hysteresis_low:.1f}°F"
             )
             self._set_ac_state(False, env)
 
         else:
-            # No change needed
             state_str = "ON" if ac_running else "OFF"
             logger.debug(
                 f"[AC {state_str}] Current: {temp_f:.1f}°F, Target: {target_temp:.1f}°F"
@@ -161,7 +152,6 @@ class ClimateController:
     def _set_ac_state(self, turn_on_ac: bool, env: SimulatedEnvironment):
         """Set AC state (both Shelly plug and simulation)."""
         try:
-            # Control Shelly plug
             if turn_on_ac:
                 success = turn_on()
                 if success:
@@ -175,13 +165,10 @@ class ClimateController:
                 else:
                     logger.error("[SHELLY] Failed to turn plug OFF")
 
-            # Always update simulation state (even if plug command failed)
-            # This allows testing without the physical plug
             env.set_ac_running(turn_on_ac)
 
         except Exception as e:
             logger.error(f"Error setting AC state: {e}", exc_info=True)
-            # Still update simulation even on error
             env.set_ac_running(turn_on_ac)
 
 
@@ -230,7 +217,6 @@ class ControlRealAC(Tool):
                 )
 
                 if success:
-                    # Get current state
                     _, _, temp_f, _, _ = env.read_sensor()
                     ac_running = env.get_ac_running()
 
@@ -257,7 +243,6 @@ class ControlRealAC(Tool):
                         )
                     )
 
-                # Manual control - turn on AC
                 success = turn_on()
                 if success:
                     env.set_ac_running(True)
@@ -278,7 +263,6 @@ class ControlRealAC(Tool):
                     )
 
             elif input_data.action == "turn_off":
-                # Manual control - turn off AC
                 success = turn_off()
                 if success:
                     env.set_ac_running(False)
@@ -324,13 +308,11 @@ class ControlRealAC(Tool):
                         )
                     )
 
-                # Get current state
                 _, _, temp_f, _, _ = env.read_sensor()
                 ac_running = env.get_ac_running()
                 target_temp = env.get_target_temperature()
                 auto_enabled = controller.is_auto_control_enabled()
 
-                # Verify plug state matches simulation
                 plug_success, plug_on = get_ac_state()
                 if plug_success and plug_on != ac_running:
                     logger.warning(

@@ -46,7 +46,6 @@ class ReadHumiditySensor(Tool):
         Returns:
             A response with temperature and humidity readings
         """
-        # Check if simulation mode is enabled
         env = SimulatedEnvironment.get_instance()
         if env.is_simulation_enabled():
             logger.info(f"=== Reading simulated climate sensor ===")
@@ -75,7 +74,6 @@ class ReadHumiditySensor(Tool):
             logger.info(f"=== Simulated sensor read complete ===")
             return ToolResponse.from_model(output)
 
-        # Real sensor reading
         logger.info(f"=== Starting DHT22 sensor read on GPIO pin {GPIO_PIN_17} ===")
 
         try:
@@ -84,14 +82,11 @@ class ReadHumiditySensor(Tool):
 
             logger.debug("Imported adafruit_dht library")
 
-            # Map GPIO pin to board pin (GPIO 17 = D17)
             board_pin = board.D17
 
-            # Create DHT22 sensor instance
             logger.info(f"Initializing DHT22 sensor on GPIO {GPIO_PIN_17}")
             dht = adafruit_dht.DHT22(board_pin, use_pulseio=False)
 
-            # DHT22 sensors often need multiple read attempts
             max_retries = 3
             for attempt in range(1, max_retries + 1):
                 try:
@@ -117,7 +112,7 @@ class ReadHumiditySensor(Tool):
                             timestamp=timestamp,
                             message=f"Successfully read sensor data: {temperature_c:.1f}°C ({temperature_f:.1f}°F), {humidity:.1f}% humidity",
                         )
-                        break  # Success, exit retry loop
+                        break
                     else:
                         logger.warning(
                             f"✗ Sensor returned None values on attempt {attempt}"
@@ -142,10 +137,9 @@ class ReadHumiditySensor(Tool):
                         logger.error("All retry attempts failed with RuntimeError")
                         output = ReadHumidityOutput(
                             success=False,
-                            message=f"Sensor read failed after {max_retries} attempts: {str(e)}. DHT sensors are sensitive - try again.",
-                        )
+                                message=f"Sensor read failed after {max_retries} attempts: {str(e)}. DHT sensors are sensitive - try again.",
+                            )
 
-            # Clean up
             dht.exit()
 
         except ImportError as e:

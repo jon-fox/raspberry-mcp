@@ -55,7 +55,6 @@ class SendIRCommand(Tool):
             f"Device: '{input_data.device_id}', Operation: '{input_data.operation}'"
         )
 
-        # Load device mapping
         device_mapping = load_device_mapping(input_data.device_id)
 
         if not device_mapping:
@@ -66,7 +65,6 @@ class SendIRCommand(Tool):
                 operation=input_data.operation,
             )
 
-        # Check if the operation is available for this device
         if (
             "codes" not in device_mapping
             or input_data.operation not in device_mapping["codes"]
@@ -82,7 +80,6 @@ class SendIRCommand(Tool):
                 operation=input_data.operation,
             )
 
-        # Get detailed IR information for enhanced logging and transmission
         operation_details = get_device_operation_details(
             input_data.device_id, input_data.operation
         )
@@ -91,7 +88,6 @@ class SendIRCommand(Tool):
             protocol = device_mapping["protocol"]
             hex_code = device_mapping["codes"][input_data.operation]
 
-            # Enhanced logging with analysis data
             logger.info(f"IR Command Details:")
             logger.info(f"  Protocol: {protocol}")
             logger.info(f"  IR Code: {hex_code}")
@@ -127,12 +123,10 @@ class SendIRCommand(Tool):
                 operation=input_data.operation,
             )
 
-        # Send IR command using GPIO17 directly with optimal settings
         logger.info(
             f"Transmitting IR signal via GPIO17 at 38kHz with ~78% duty cycle (5x repeats for device control)..."
         )
 
-        # Get raw timing data for Generic protocols
         raw_timing_data = None
         if protocol.lower() == "generic" and operation_details:
             raw_timing_data = operation_details.get("raw_timing_data")
@@ -142,7 +136,6 @@ class SendIRCommand(Tool):
 
         ok, detail = ir_send(protocol, hex_code, raw_timing_data=raw_timing_data)
 
-        # Create response with enhanced messaging
         if ok:
             if operation_details and operation_details.get("verified"):
                 message = f"✓ Verified {protocol} command '{input_data.operation}' sent successfully to '{input_data.device_id}' (Code: {hex_code})"

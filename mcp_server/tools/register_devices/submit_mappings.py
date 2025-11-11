@@ -63,11 +63,8 @@ class SubmitMappings(Tool):
             f"Submitting mappings for device '{input_data.device_key}' with {len(input_data.required_operations)} required and {len(input_data.optional_operations)} optional operations"
         )
 
-        logger.debug("Getting IRListenerManager instance")
         manager = IRListenerManager.get_instance()
 
-        # Validate required operations
-        logger.debug("Validating required operations")
         if (
             "power_on" not in input_data.required_operations
             or "power_off" not in input_data.required_operations
@@ -85,26 +82,17 @@ class SubmitMappings(Tool):
                 mapped_required=[],
                 mapped_optional=[],
             )
-            logger.info("Returning failure response due to missing required operations")
             return ToolResponse.from_model(output)
 
-        logger.debug("Required operations validation passed")
-
-        # Get recent IR events within the specified horizon
-        logger.debug(
-            f"Retrieving recent IR events within {input_data.horizon_s}s horizon"
-        )
         recent_events = manager.get_recent_events(input_data.horizon_s)
         logger.info(
             f"Found {len(recent_events)} recent IR events within {input_data.horizon_s}s horizon"
         )
 
         if recent_events:
-            logger.debug("Recent IR events details:")
             for i, event in enumerate(recent_events):
                 logger.debug(f"  Event {i+1}: {event}")
 
-                # Log decoded IR codes and analysis if available
                 analysis = event.get("analysis", {})
                 if analysis:
                     protocol = analysis.get("protocol", "Unknown")
@@ -121,13 +109,11 @@ class SubmitMappings(Tool):
                                 f"    Address: 0x{address:02X}, Command: 0x{command:02X}"
                             )
 
-                        # Log verification status for protocols that support it
                         if analysis.get("verified"):
                             logger.info(f"    ✓ Protocol verification passed")
                         elif "verified" in analysis and not analysis["verified"]:
                             logger.warning(f"    ✗ Protocol verification failed")
 
-                    # Log signal fingerprint for pattern matching
                     pulse_count = event.get("pulse_count", 0)
                     total_duration = event.get("total_duration_us", 0)
                     logger.debug(
@@ -140,7 +126,6 @@ class SubmitMappings(Tool):
         else:
             logger.warning("No recent IR events found")
 
-        # Combine all operations in order (required first, then optional)
         all_operations = input_data.required_operations + input_data.optional_operations
         num_operations = len(all_operations)
         num_events = len(recent_events)
@@ -163,7 +148,6 @@ class SubmitMappings(Tool):
                 mapped_required=[],
                 mapped_optional=[],
             )
-            logger.info("Returning failure response due to insufficient IR events")
         elif num_events > num_operations:
             logger.error(
                 f"Too many IR events: expected {num_operations}, found {num_events}"
@@ -177,11 +161,9 @@ class SubmitMappings(Tool):
                 mapped_required=[],
                 mapped_optional=[],
             )
-            logger.info("Returning failure response due to too many IR events")
         else:
             logger.info("Perfect match: number of events equals number of operations")
-            # Get the most recent events that match our operations count
-            relevant_events = recent_events[-num_operations:]  # Take the last N events
+            relevant_events = recent_events[-num_operations:]
             logger.debug(
                 f"Selected {len(relevant_events)} most recent events for mapping"
             )
@@ -218,7 +200,6 @@ class SubmitMappings(Tool):
                 logger.debug(f"  Full event data: {event}")
             logger.info("=== End IR Code Mapping ===")
 
-            logger.info("Saving device mapping to file system")
             success = save_device_mapping(
                 device_key=input_data.device_key,
                 required_operations=input_data.required_operations,
@@ -236,7 +217,6 @@ class SubmitMappings(Tool):
                 logger.info(f"  Optional operations mapped: {num_optional}")
                 logger.info(f"  Total mappings created: {num_operations}")
 
-                # Log summary of mapped IR codes
                 logger.info(
                     f"=== Mapped IR Codes Summary for '{input_data.device_key}' ==="
                 )
@@ -261,16 +241,10 @@ class SubmitMappings(Tool):
                     mapped_required=input_data.required_operations,
                     mapped_optional=input_data.optional_operations,
                 )
-                logger.info("Returning success response")
             else:
                 logger.error(
                     f"✗ Failed to save device mapping for '{input_data.device_key}' - file system error"
                 )
-                logger.error("This could be due to:")
-                logger.error("  - Insufficient file system permissions")
-                logger.error("  - Disk space issues")
-                logger.error("  - Invalid file path")
-                logger.error("  - Device registry corruption")
                 output = SubmitMappingsOutput(
                     success=False,
                     message=f"Failed to save device mapping for '{input_data.device_key}'. "
@@ -279,7 +253,6 @@ class SubmitMappings(Tool):
                     mapped_required=[],
                     mapped_optional=[],
                 )
-                logger.info("Returning failure response due to file system error")
 
         logger.info(f"=== Submit mappings operation completed ===")
         return ToolResponse.from_model(output)
