@@ -51,10 +51,12 @@ class ReadHumiditySensor(Tool):
         if env.is_simulation_enabled():
             logger.info(f"=== Reading simulated climate sensor ===")
             success, temp_c, temp_f, humidity, message = env.read_sensor()
-            
+
             if success:
                 timestamp = datetime.utcnow().isoformat()
-                logger.info(f"✓ Simulated sensor read: {temp_c:.1f}°C ({temp_f:.1f}°F), {humidity:.1f}% humidity")
+                logger.info(
+                    f"✓ Simulated sensor read: {temp_c:.1f}°C ({temp_f:.1f}°F), {humidity:.1f}% humidity"
+                )
                 output = ReadHumidityOutput(
                     success=True,
                     temperature_c=round(temp_c, 1),
@@ -69,39 +71,44 @@ class ReadHumiditySensor(Tool):
                     success=False,
                     message=message,
                 )
-            
+
             logger.info(f"=== Simulated sensor read complete ===")
             return ToolResponse.from_model(output)
-        
+
         # Real sensor reading
         logger.info(f"=== Starting DHT22 sensor read on GPIO pin {GPIO_PIN_17} ===")
-        
+
         try:
             import board
             import adafruit_dht
+
             logger.debug("Imported adafruit_dht library")
-            
+
             # Map GPIO pin to board pin (GPIO 17 = D17)
             board_pin = board.D17
-            
+
             # Create DHT22 sensor instance
             logger.info(f"Initializing DHT22 sensor on GPIO {GPIO_PIN_17}")
             dht = adafruit_dht.DHT22(board_pin, use_pulseio=False)
-            
+
             # DHT22 sensors often need multiple read attempts
             max_retries = 3
             for attempt in range(1, max_retries + 1):
                 try:
-                    logger.info(f"Attempting to read sensor data (attempt {attempt}/{max_retries})...")
-                    
+                    logger.info(
+                        f"Attempting to read sensor data (attempt {attempt}/{max_retries})..."
+                    )
+
                     temperature_c = dht.temperature
                     humidity = dht.humidity
-                    
+
                     if temperature_c is not None and humidity is not None:
                         temperature_f = temperature_c * 9.0 / 5.0 + 32.0
                         timestamp = datetime.utcnow().isoformat()
-                        
-                        logger.info(f"✓ Successfully read sensor on attempt {attempt}: {temperature_c:.1f}°C ({temperature_f:.1f}°F), {humidity:.1f}% humidity")
+
+                        logger.info(
+                            f"✓ Successfully read sensor on attempt {attempt}: {temperature_c:.1f}°C ({temperature_f:.1f}°F), {humidity:.1f}% humidity"
+                        )
                         output = ReadHumidityOutput(
                             success=True,
                             temperature_c=round(temperature_c, 1),
@@ -112,7 +119,9 @@ class ReadHumiditySensor(Tool):
                         )
                         break  # Success, exit retry loop
                     else:
-                        logger.warning(f"✗ Sensor returned None values on attempt {attempt}")
+                        logger.warning(
+                            f"✗ Sensor returned None values on attempt {attempt}"
+                        )
                         if attempt < max_retries:
                             logger.info(f"Waiting 2 seconds before retry...")
                             time.sleep(2)
@@ -123,7 +132,9 @@ class ReadHumiditySensor(Tool):
                                 message=f"Sensor read failed after {max_retries} attempts (returned None). Check: 1) Sensor connections, 2) Power supply (3.3V), 3) Try a different DHT22 sensor.",
                             )
                 except RuntimeError as e:
-                    logger.warning(f"✗ DHT22 sensor RuntimeError on attempt {attempt}: {e}")
+                    logger.warning(
+                        f"✗ DHT22 sensor RuntimeError on attempt {attempt}: {e}"
+                    )
                     if attempt < max_retries:
                         logger.info(f"Waiting 2 seconds before retry...")
                         time.sleep(2)
@@ -133,10 +144,10 @@ class ReadHumiditySensor(Tool):
                             success=False,
                             message=f"Sensor read failed after {max_retries} attempts: {str(e)}. DHT sensors are sensitive - try again.",
                         )
-            
+
             # Clean up
             dht.exit()
-            
+
         except ImportError as e:
             logger.error(f"✗ Required libraries not available: {e}")
             output = ReadHumidityOutput(
@@ -149,6 +160,6 @@ class ReadHumiditySensor(Tool):
                 success=False,
                 message=f"Unexpected error reading sensor: {str(e)}",
             )
-        
+
         logger.info(f"=== DHT22 sensor read complete. Success: {output.success} ===")
         return ToolResponse.from_model(output)

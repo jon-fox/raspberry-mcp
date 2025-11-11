@@ -26,11 +26,9 @@ class ReadHumidityOutput(BaseToolInput):
             ]
         }
     )
-    
+
     success: bool = Field(
-        ..., 
-        description="Whether the sensor read was successful.", 
-        examples=[True]
+        ..., description="Whether the sensor read was successful.", examples=[True]
     )
     temperature_c: Optional[float] = Field(
         None,

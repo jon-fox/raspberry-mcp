@@ -17,7 +17,9 @@ class StopIRListener(Tool):
     """Tool that stops the IR listener."""
 
     name = "StopIRListener"
-    description = "Stops the IR listener that captures remote control signals on GPIO pin 27"
+    description = (
+        "Stops the IR listener that captures remote control signals on GPIO pin 27"
+    )
     input_model = StopIrListenerInput
     output_model = StopIrListenerOutput
 
@@ -42,12 +44,12 @@ class StopIRListener(Tool):
         logger.info("Stopping IR listener service")
         manager = IRListenerManager.get_instance()
         success, message = await manager.stop_listening()
-        
+
         if success:
             logger.info(f"IR listener stopped successfully: {message}")
         else:
             logger.error(f"Failed to stop IR listener: {message}")
-        
+
         output = StopIrListenerOutput(
             success=success,
             message=message,

@@ -21,35 +21,32 @@ async def main():
     print("=" * 60)
     print("Climate Control Simulation - Agent Reactive Demo")
     print("=" * 60)
-    
+
     sim_tool = SimulateClimate()
     ac_tool = ControlSimulatedAC()
     sensor_tool = ReadHumiditySensor()
-    
+
     target_temp = 65.0
-    
+
     # 1. Enable simulation at hot temperature
     print(f"\n1. Starting simulation at 75°F (too hot!)")
-    result = await sim_tool.execute(SimulateClimateInput(
-        action="enable",
-        temp_f=75.0
-    ))
+    result = await sim_tool.execute(SimulateClimateInput(action="enable", temp_f=75.0))
     print(f"   {result.output.message}")
-    
+
     # 2. Agent monitoring loop
     print(f"\n2. Agent monitoring temperature (target: {target_temp}°F)\n")
-    
+
     cycle = 0
     while True:
         cycle += 1
-        
+
         # Agent reads sensor
         result = await sensor_tool.execute(ReadHumidityInput())
         current_temp = result.output.temperature_f
-        
+
         print(f"   Cycle {cycle}:")
         print(f"   - Read sensor: {current_temp}°F")
-        
+
         # Agent decides: too hot?
         if current_temp <= target_temp:
             print(f"   - Decision: Target reached! ✓")
@@ -57,17 +54,16 @@ async def main():
             result = await ac_tool.execute(ControlACInput(action="turn_off"))
             print(f"   - {result.output.message}")
             break
-        
+
         # Agent turns on AC to cool
         print(f"   - Decision: Too hot ({current_temp}°F > {target_temp}°F)")
-        result = await ac_tool.execute(ControlACInput(
-            action="turn_on",
-            target_temp_f=target_temp
-        ))
+        result = await ac_tool.execute(
+            ControlACInput(action="turn_on", target_temp_f=target_temp)
+        )
         print(f"   - {result.output.message}\n")
-        
+
         await asyncio.sleep(1)  # Pause for readability
-    
+
     print("\n" + "=" * 60)
     print("Simulation complete!")
     print("\nWhat happened:")

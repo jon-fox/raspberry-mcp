@@ -29,8 +29,11 @@ class StartIrListenerOutput(BaseToolInput):
     message: str = Field(
         ...,
         description="Instructions for the user including which GPIO pin is being used.",
-        examples=["IR listener started successfully on GPIO pin 27. Press remote buttons to capture signals."],
+        examples=[
+            "IR listener started successfully on GPIO pin 27. Press remote buttons to capture signals."
+        ],
     )
+
 
 # Stop IR Listener
 class StopIrListenerInput(BaseToolInput):
@@ -177,7 +180,7 @@ class GetListenerStatusOutput(BaseToolInput):
                     "recent_events_5min": 8,
                     "listener_task_active": True,
                     "latest_event_time": "2025-09-10T14:30:25.123456",
-                    "message": "IR listener is ACTIVE and working! Captured 15 signals total. Recent activity: 3 signals in last minute, 8 in last 5 minutes."
+                    "message": "IR listener is ACTIVE and working! Captured 15 signals total. Recent activity: 3 signals in last minute, 8 in last 5 minutes.",
                 }
             ]
         }
@@ -192,22 +195,34 @@ class GetListenerStatusOutput(BaseToolInput):
         ..., description="GPIO pin number being monitored.", examples=[27]
     )
     total_events: int = Field(
-        ..., description="Total number of IR signals captured since listener started.", examples=[15]
+        ...,
+        description="Total number of IR signals captured since listener started.",
+        examples=[15],
     )
     recent_events_1min: int = Field(
-        ..., description="Number of IR signals captured in the last minute.", examples=[3]
+        ...,
+        description="Number of IR signals captured in the last minute.",
+        examples=[3],
     )
     recent_events_5min: int = Field(
-        ..., description="Number of IR signals captured in the last 5 minutes.", examples=[8]
+        ...,
+        description="Number of IR signals captured in the last 5 minutes.",
+        examples=[8],
     )
     listener_task_active: bool = Field(
-        ..., description="Whether the background listener task is running.", examples=[True]
+        ...,
+        description="Whether the background listener task is running.",
+        examples=[True],
     )
     latest_event_time: Optional[str] = Field(
-        None, description="ISO timestamp of the most recent IR signal captured.", examples=["2025-09-10T14:30:25.123456"]
+        None,
+        description="ISO timestamp of the most recent IR signal captured.",
+        examples=["2025-09-10T14:30:25.123456"],
     )
     message: str = Field(
         ...,
         description="Detailed status message with diagnostics and recommendations.",
-        examples=["IR listener is ACTIVE and working! Captured 15 signals total. Recent activity: 3 signals in last minute, 8 in last 5 minutes."],
+        examples=[
+            "IR listener is ACTIVE and working! Captured 15 signals total. Recent activity: 3 signals in last minute, 8 in last 5 minutes."
+        ],
     )

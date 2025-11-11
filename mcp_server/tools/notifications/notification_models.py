@@ -19,7 +19,12 @@ class SendNotificationInput(BaseToolInput):
     message: str = Field(
         ...,
         description="The message to send as a notification.",
-        examples=["Humidity: 75%", "Temperature alert: 85°F", "Light detected: Bright", "Photo sensor: Room is dark"],
+        examples=[
+            "Humidity: 75%",
+            "Temperature alert: 85°F",
+            "Light detected: Bright",
+            "Photo sensor: Room is dark",
+        ],
     )
 
 
@@ -45,5 +50,8 @@ class SendNotificationOutput(BaseToolInput):
     message: str = Field(
         ...,
         description="Status message or error description.",
-        examples=["Notification sent successfully.", "Failed to send notification: Connection timeout"],
+        examples=[
+            "Notification sent successfully.",
+            "Failed to send notification: Connection timeout",
+        ],
     )

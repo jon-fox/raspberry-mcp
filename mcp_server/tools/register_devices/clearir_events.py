@@ -41,12 +41,14 @@ class ClearIREvents(Tool):
         """
         logger.info("Clearing IR events from listener manager")
         manager = IRListenerManager.get_instance()
-        
+
         # Get count before clearing for logging
-        events_before = len(manager.get_recent_events(3600))  # Get last hour's events for count
+        events_before = len(
+            manager.get_recent_events(3600)
+        )  # Get last hour's events for count
         manager.clear_events()
         logger.info(f"Successfully cleared {events_before} IR events from memory")
-        
+
         output = ClearIrEventsOutput(
             success=True,
             message="IR events cleared successfully.",

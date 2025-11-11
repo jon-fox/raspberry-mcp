@@ -18,7 +18,9 @@ class ReadPhotoSensor(Tool):
     """Tool that reads light level from a photo sensor (LM393 + photoresistor)."""
 
     name = "ReadPhotoSensor"
-    description = "Reads light level (bright/dark) from a photo sensor connected to a GPIO pin"
+    description = (
+        "Reads light level (bright/dark) from a photo sensor connected to a GPIO pin"
+    )
     input_model = ReadPhotoSensorInput
     output_model = ReadPhotoSensorOutput
 
@@ -41,52 +43,55 @@ class ReadPhotoSensor(Tool):
             A response with light level (bright/dark)
         """
         logger.info(f"=== Starting photo sensor read on GPIO pin {GPIO_PIN_27} ===")
-        
+
         try:
             import gpiod
             import os
-            
+
             logger.debug("Imported gpiod library")
-            
+
             # Check for available GPIO chips
-            gpiochip_paths = ['/dev/gpiochip0', '/dev/gpiochip1', '/dev/gpiochip2']
+            gpiochip_paths = ["/dev/gpiochip0", "/dev/gpiochip1", "/dev/gpiochip2"]
             available_chips = [path for path in gpiochip_paths if os.path.exists(path)]
-            
+
             if not available_chips:
-                logger.error("No GPIO chips found. Available devices: " + str(os.listdir('/dev')))
+                logger.error(
+                    "No GPIO chips found. Available devices: " + str(os.listdir("/dev"))
+                )
                 raise FileNotFoundError(
                     "No GPIO chip devices found. Container may not have --device /dev/gpiochip0 mapped. "
-                    "Available /dev devices: " + ', '.join(os.listdir('/dev'))
+                    "Available /dev devices: " + ", ".join(os.listdir("/dev"))
                 )
-            
+
             logger.info(f"Available GPIO chips: {available_chips}")
-            
+
             # Open the first available GPIO chip
             chip_path = available_chips[0]
             logger.info(f"Opening GPIO chip: {chip_path}")
-            
+
             # Use gpiod v2 API
             chip = gpiod.Chip(chip_path)
-            
+
             try:
                 # Request the GPIO line as input (gpiod v2 API)
                 line_settings = gpiod.LineSettings(direction=gpiod.line.Direction.INPUT)
                 line_request = chip.request_lines(
-                    config={GPIO_PIN_27: line_settings},
-                    consumer="photo_sensor"
+                    config={GPIO_PIN_27: line_settings}, consumer="photo_sensor"
                 )
-                
+
                 # Read sensor state
                 # LM393 photo sensor module outputs LOW (0) when bright, HIGH (1) when dark
                 sensor_state = line_request.get_value(GPIO_PIN_27)
                 is_bright = not bool(sensor_state)  # Invert: 0=bright, 1=dark
-                
+
                 # Get timestamp
                 timestamp = datetime.utcnow().isoformat()
-                
+
                 light_level = "Bright" if is_bright else "Dark"
-                logger.info(f"✓ Photo sensor reading: {light_level} (GPIO {GPIO_PIN_27} = {sensor_state})")
-                
+                logger.info(
+                    f"✓ Photo sensor reading: {light_level} (GPIO {GPIO_PIN_27} = {sensor_state})"
+                )
+
                 output = ReadPhotoSensorOutput(
                     success=True,
                     is_bright=is_bright,
@@ -98,10 +103,10 @@ class ReadPhotoSensor(Tool):
                 )
             finally:
                 # Release the line request
-                if 'line_request' in locals():
+                if "line_request" in locals():
                     line_request.release()
                 chip.close()
-            
+
         except ImportError as e:
             logger.error(f"✗ Required libraries not available: {e}")
             output = ReadPhotoSensorOutput(
@@ -116,6 +121,6 @@ class ReadPhotoSensor(Tool):
                 is_bright=False,
                 message=f"Unexpected error reading sensor: {str(e)}",
             )
-        
+
         logger.info(f"=== Photo sensor read complete. Success: {output.success} ===")
         return ToolResponse.from_model(output)

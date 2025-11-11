@@ -3,7 +3,10 @@
 from typing import Dict, Any
 import logging
 
-from mcp_server.tools.ir_control.ir_models import ListDeviceOperationsRequest, ListDeviceOperationsResponse
+from mcp_server.tools.ir_control.ir_models import (
+    ListDeviceOperationsRequest,
+    ListDeviceOperationsResponse,
+)
 from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.device_registry import load_device_mapping
 
@@ -14,7 +17,9 @@ class ListDeviceOperations(Tool):
     """Tool that lists all available operations for a registered device."""
 
     name = "ListDeviceOperations"
-    description = "Lists all available operations (required and optional) for a registered device"
+    description = (
+        "Lists all available operations (required and optional) for a registered device"
+    )
     input_model = ListDeviceOperationsRequest
     output_model = ListDeviceOperationsResponse
 
@@ -36,7 +41,7 @@ class ListDeviceOperations(Tool):
             A response listing available operations for the device
         """
         logger.info(f"Listing operations for device '{input_data.device_id}'")
-        
+
         # Load device mapping
         device_mapping = load_device_mapping(input_data.device_id)
 
@@ -47,39 +52,49 @@ class ListDeviceOperations(Tool):
                 device_id=input_data.device_id,
                 required_operations=[],
                 optional_operations=[],
-                message=f"Device '{input_data.device_id}' not found. Make sure the device is registered using SubmitMappings."
+                message=f"Device '{input_data.device_id}' not found. Make sure the device is registered using SubmitMappings.",
             )
             return ToolResponse.from_model(output)
 
         # Extract required and optional operations
         required_operations = device_mapping.get("required_operations", [])
         optional_operations = device_mapping.get("optional_operations", [])
-        
+
         # For backward compatibility with old format
         if not required_operations and not optional_operations:
-            logger.info(f"Using backward compatibility mode for device '{input_data.device_id}'")
+            logger.info(
+                f"Using backward compatibility mode for device '{input_data.device_id}'"
+            )
             # Try to extract from old format
             all_codes = list(device_mapping.get("codes", {}).keys())
             # Assume power_on and power_off are required if they exist
-            required_operations = [op for op in all_codes if op in ["power_on", "power_off"]]
-            optional_operations = [op for op in all_codes if op not in required_operations]
+            required_operations = [
+                op for op in all_codes if op in ["power_on", "power_off"]
+            ]
+            optional_operations = [
+                op for op in all_codes if op not in required_operations
+            ]
 
         num_required = len(required_operations)
         num_optional = len(optional_operations)
         total_ops = num_required + num_optional
 
-        logger.info(f"Device '{input_data.device_id}' has {num_required} required and {num_optional} optional operations")
+        logger.info(
+            f"Device '{input_data.device_id}' has {num_required} required and {num_optional} optional operations"
+        )
 
         message = f"Device '{input_data.device_id}' has {num_required} required and {num_optional} optional operations"
         if total_ops == 0:
             message = f"Device '{input_data.device_id}' has no registered operations"
-            logger.warning(f"Device '{input_data.device_id}' has no registered operations")
+            logger.warning(
+                f"Device '{input_data.device_id}' has no registered operations"
+            )
 
         output = ListDeviceOperationsResponse(
             success=True,
             device_id=input_data.device_id,
             required_operations=required_operations,
             optional_operations=optional_operations,
-            message=message
+            message=message,
         )
         return ToolResponse.from_model(output)

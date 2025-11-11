@@ -22,16 +22,14 @@ class ReadPhotoSensorOutput(BaseToolInput):
                     "gpio_pin": 27,
                     "timestamp": "2025-10-22T10:30:45.123456",
                     "message": "Light detected: Bright",
-                    "sensor_info": "LM393 digital photo sensor (binary output only)"
+                    "sensor_info": "LM393 digital photo sensor (binary output only)",
                 }
             ]
         }
     )
-    
+
     success: bool = Field(
-        ..., 
-        description="Whether the sensor read was successful.", 
-        examples=[True]
+        ..., description="Whether the sensor read was successful.", examples=[True]
     )
     is_bright: bool = Field(
         ...,

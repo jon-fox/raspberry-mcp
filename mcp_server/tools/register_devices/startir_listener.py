@@ -12,6 +12,7 @@ from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
+
 class StartIRListener(Tool):
     """Tool that starts the IR listener."""
 
@@ -41,12 +42,12 @@ class StartIRListener(Tool):
         logger.info("Starting IR listener service")
         manager = IRListenerManager.get_instance()
         success, message = await manager.start_listening()
-        
+
         if success:
             logger.info(f"IR listener started successfully: {message}")
         else:
             logger.error(f"Failed to start IR listener: {message}")
-        
+
         output = StartIrListenerOutput(
             success=success,
             message=message,

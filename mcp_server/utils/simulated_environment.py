@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 class SimulatedEnvironment:
     """Singleton that manages simulated temperature and humidity for testing.
-    
+
     This allows testing climate control logic without requiring real sensors.
     The environment naturally drifts toward ambient conditions unless actively controlled.
     """
-    
+
     _instance = None
     _lock = threading.Lock()
-    
+
     def __new__(cls):
         if cls._instance is None:
             with cls._lock:
@@ -28,7 +28,7 @@ class SimulatedEnvironment:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialize()
         return cls._instance
-    
+
     def _initialize(self):
         """Initialize the simulated environment."""
         self._simulation_enabled = False
@@ -44,12 +44,12 @@ class SimulatedEnvironment:
         # AC state tracking
         self._ac_running = False
         self._target_temp_f = None  # Target temperature for automatic control
-    
+
     @classmethod
     def get_instance(cls):
         """Get the singleton instance."""
         return cls()
-    
+
     def enable_simulation(self, temp_f: float = 70.0, humidity: float = 50.0):
         """Enable simulation mode - simple!"""
         with self._lock:
@@ -58,66 +58,72 @@ class SimulatedEnvironment:
             self._current_humidity = humidity
             self._ambient_temp_f = temp_f + 5.0  # Natural drift slightly warmer
             self._last_update = time.time()
-            
+
             if self._update_thread is None or not self._update_thread.is_alive():
                 self._stop_thread = False
-                self._update_thread = threading.Thread(target=self._update_loop, daemon=True)
+                self._update_thread = threading.Thread(
+                    target=self._update_loop, daemon=True
+                )
                 self._update_thread.start()
-            
+
             logger.info(f"Simulation enabled: {temp_f}°F, {humidity}%")
-    
+
     def disable_simulation(self):
         """Disable simulation mode."""
         with self._lock:
             self._simulation_enabled = False
             self._stop_thread = True
             logger.info("Simulation disabled")
-    
+
     def is_simulation_enabled(self) -> bool:
         """Check if simulation is enabled."""
         return self._simulation_enabled
-    
-    def read_sensor(self) -> Tuple[bool, Optional[float], Optional[float], Optional[float], str]:
+
+    def read_sensor(
+        self,
+    ) -> Tuple[bool, Optional[float], Optional[float], Optional[float], str]:
         """Read the simulated sensor values."""
         if not self._simulation_enabled:
             return False, None, None, None, "Simulation not enabled"
-        
+
         with self._lock:
             temp_f = self._current_temp_f
             temp_c = (temp_f - 32.0) * 5.0 / 9.0
             humidity = self._current_humidity
             message = f"Simulated: {temp_c:.1f}°C ({temp_f:.1f}°F), {humidity:.1f}%"
             return True, temp_c, temp_f, humidity, message
-    
+
     def adjust_temperature(self, delta_f: float):
         """Adjust temperature by delta amount (positive or negative)."""
         with self._lock:
             self._current_temp_f += delta_f
-            logger.info(f"Temperature adjusted by {delta_f:+.1f}°F to {self._current_temp_f:.1f}°F")
-    
+            logger.info(
+                f"Temperature adjusted by {delta_f:+.1f}°F to {self._current_temp_f:.1f}°F"
+            )
+
     def _update_loop(self):
         """Background thread that continuously updates environment state."""
         logger.info("Environment update loop started")
-        
+
         while not self._stop_thread:
             try:
                 time.sleep(2)  # Update every 2 seconds
                 self._update_environment()
             except Exception as e:
                 logger.error(f"Error in environment update loop: {e}")
-        
+
         logger.info("Environment update loop stopped")
-    
+
     def _update_environment(self):
         """Update simulated environment - natural drift toward ambient or AC cooling."""
         with self._lock:
             if not self._simulation_enabled:
                 return
-            
+
             current_time = time.time()
             time_delta = current_time - self._last_update
             self._last_update = current_time
-            
+
             if self._ac_running:
                 # AC is cooling - apply cooling rate
                 cooling_amount = self._ac_cooling_rate * time_delta
@@ -130,36 +136,38 @@ class SimulatedEnvironment:
                 temp_diff = self._ambient_temp_f - self._current_temp_f
                 drift_amount = temp_diff * self._drift_rate * time_delta
                 self._current_temp_f += drift_amount
-    
+
     def get_status(self) -> dict:
         """Get current status."""
         with self._lock:
             return {
-                'enabled': self._simulation_enabled,
-                'temp_f': round(self._current_temp_f, 1),
-                'temp_c': round((self._current_temp_f - 32.0) * 5.0 / 9.0, 1),
-                'humidity': round(self._current_humidity, 1),
-                'ac_running': self._ac_running,
-                'target_temp_f': self._target_temp_f,
+                "enabled": self._simulation_enabled,
+                "temp_f": round(self._current_temp_f, 1),
+                "temp_c": round((self._current_temp_f - 32.0) * 5.0 / 9.0, 1),
+                "humidity": round(self._current_humidity, 1),
+                "ac_running": self._ac_running,
+                "target_temp_f": self._target_temp_f,
             }
-    
+
     def set_ac_running(self, running: bool):
         """Set AC running state - called by climate control tool."""
         with self._lock:
             self._ac_running = running
-            logger.info(f"AC state changed: {'ON' if running else 'OFF'} at {self._current_temp_f:.1f}°F")
-    
+            logger.info(
+                f"AC state changed: {'ON' if running else 'OFF'} at {self._current_temp_f:.1f}°F"
+            )
+
     def get_ac_running(self) -> bool:
         """Get current AC running state."""
         with self._lock:
             return self._ac_running
-    
+
     def set_target_temperature(self, target_f: float):
         """Set target temperature for automatic control."""
         with self._lock:
             self._target_temp_f = target_f
             logger.info(f"Target temperature set to {target_f:.1f}°F")
-    
+
     def get_target_temperature(self) -> Optional[float]:
         """Get target temperature."""
         with self._lock:

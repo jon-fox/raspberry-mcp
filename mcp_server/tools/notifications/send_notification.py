@@ -46,28 +46,27 @@ class SendNotification(Tool):
 
             logger.info("Posting notification to https://ntfy.sh/pi-agent")
             response = requests.post(
-                "https://ntfy.sh/pi-agent",
-                data=input_data.message.encode()
+                "https://ntfy.sh/pi-agent", data=input_data.message.encode()
             )
             response.raise_for_status()
 
-            logger.info(f"✓ Notification sent successfully (status code: {response.status_code})")
+            logger.info(
+                f"✓ Notification sent successfully (status code: {response.status_code})"
+            )
             output = SendNotificationOutput(
-                success=True,
-                message="Notification sent successfully."
+                success=True, message="Notification sent successfully."
             )
 
         except ImportError as e:
             logger.error(f"✗ Required library not available: {e}")
             output = SendNotificationOutput(
                 success=False,
-                message=f"Requests library not installed: {str(e)}. Install 'requests' package."
+                message=f"Requests library not installed: {str(e)}. Install 'requests' package.",
             )
         except Exception as e:
             logger.error(f"✗ Failed to send notification: {e}", exc_info=True)
             output = SendNotificationOutput(
-                success=False,
-                message=f"Failed to send notification: {str(e)}"
+                success=False, message=f"Failed to send notification: {str(e)}"
             )
 
         logger.info(f"=== Notification send complete. Success: {output.success} ===")
