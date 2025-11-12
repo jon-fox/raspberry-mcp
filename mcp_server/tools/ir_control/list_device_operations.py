@@ -42,7 +42,6 @@ class ListDeviceOperations(Tool):
         """
         logger.info(f"Listing operations for device '{input_data.device_id}'")
 
-        # Load device mapping
         device_mapping = load_device_mapping(input_data.device_id)
 
         if not device_mapping:
@@ -56,7 +55,6 @@ class ListDeviceOperations(Tool):
             )
             return ToolResponse.from_model(output)
 
-        # Extract required and optional operations
         required_operations = device_mapping.get("required_operations", [])
         optional_operations = device_mapping.get("optional_operations", [])
 
@@ -67,7 +65,6 @@ class ListDeviceOperations(Tool):
             )
             # Try to extract from old format
             all_codes = list(device_mapping.get("codes", {}).keys())
-            # Assume power_on and power_off are required if they exist
             required_operations = [
                 op for op in all_codes if op in ["power_on", "power_off"]
             ]
