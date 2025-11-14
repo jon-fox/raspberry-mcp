@@ -46,6 +46,7 @@ ssh user@mcppi.local
 
 Use `ListDeviceOperations` to see what's available for each device.
 
+
 ## Tools
 
 - `GetMappingGuidance` - Get button suggestions for device types
