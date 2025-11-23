@@ -13,17 +13,13 @@ from mcp_server.services.resource_service import ResourceService
 from mcp_server.interfaces.tool import Tool
 from mcp_server.interfaces.resource import Resource
 from mcp_server.tools import (
-    # Device registration tools
+    # IR tools
     StartIRListener,
     StopIRListener,
     ClearIREvents,
     SubmitMappings,
     GetListenerStatus,
     SendIRCommand,
-    ListDeviceOperations,
-    GetMappingGuidance,
-    TestIRTransmitter,
-    TroubleshootIR,
     # Sensor tools
     ReadHumiditySensor,
     ReadPhotoSensor,
@@ -46,17 +42,13 @@ def get_available_tools() -> List[Tool]:
     """Get list of all available tools."""
     logger.info("Initializing available tools")
     tools = [
-        # Device registration tools
+        # IR tools
         StartIRListener(),
         StopIRListener(),
         ClearIREvents(),
         SubmitMappings(),
         GetListenerStatus(),
         SendIRCommand(),
-        ListDeviceOperations(),
-        GetMappingGuidance(),
-        TestIRTransmitter(),
-        TroubleshootIR(),
         # Sensor tools
         ReadHumiditySensor(),
         ReadPhotoSensor(),
