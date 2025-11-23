@@ -1,8 +1,10 @@
 """Tool for troubleshooting IR device control issues."""
 
 import asyncio
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
+
+from pydantic import Field, ConfigDict
 
 from mcp_server.interfaces.tool import Tool, ToolResponse, BaseToolInput
 from mcp_server.utils.device_registry import (
@@ -10,7 +12,6 @@ from mcp_server.utils.device_registry import (
     get_device_operation_details,
 )
 from mcp_server.utils.ir_event_controls import ir_send
-from pydantic import Field, ConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -135,42 +136,16 @@ class TroubleshootIR(Tool):
             # Wait between tests to avoid interference
             await asyncio.sleep(2)
 
-        # Generate recommendations
-        recommendations = []
-        recommendations.append("TROUBLESHOOTING COMPLETE - Try these solutions:")
-        recommendations.append("")
-        recommendations.append("1. HARDWARE CHECK:")
-        recommendations.append(
-            "   - Verify IR LED is connected to GPIO17 with proper current-limiting resistor"
-        )
-        recommendations.append("   - Check LED polarity (longer leg = positive/anode)")
-        recommendations.append(
-            "   - Ensure LED is pointing at device (5-10 foot range)"
-        )
-        recommendations.append("   - Test with visible LED first to verify circuit")
-        recommendations.append("")
-        recommendations.append("2. DEVICE-SPECIFIC:")
-        recommendations.append(
-            "   - Some devices need to be in specific mode to receive commands"
-        )
-        recommendations.append(
-            "   - Try different operations (volume, channel) that might be more responsive"
-        )
-        recommendations.append(
-            "   - Check if device has IR learning mode that needs different timing"
-        )
-        recommendations.append("")
-        recommendations.append(
-            "3. IF TESTS SHOWED TRANSMISSION BUT NO DEVICE RESPONSE:"
-        )
-        recommendations.append(
-            "   - Try the high-power configurations (100% duty cycle)"
-        )
-        recommendations.append("   - Test different carrier frequencies (36kHz, 40kHz)")
-        recommendations.append("   - Move IR LED closer to device")
-        recommendations.append("   - Check device manual for specific IR requirements")
+        recommendations = [
+            "",
+            "TROUBLESHOOTING:",
+            "- Verify IR LED connected to GPIO17 with current-limiting resistor",
+            "- Check LED polarity and pointing at device (5-10 ft range)",
+            "- Try high-power configs (100% duty cycle) or different frequencies (36kHz, 40kHz)",
+            "- Ensure device is in correct mode to receive IR commands",
+        ]
 
-        final_message = "\n".join(results + [""] + recommendations)
+        final_message = "\n".join(results + recommendations)
 
         output = TroubleshootIRResponse(
             success=True, message=final_message, tests_performed=tests_performed

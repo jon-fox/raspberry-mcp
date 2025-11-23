@@ -1,13 +1,13 @@
 """Generic tool for sending IR commands to any registered device."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.tools.ir_control.ir_models import (
     SendIRCommandRequest,
     SendIRCommandResponse,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.device_registry import (
     load_device_mapping,
     get_device_operation_details,
@@ -42,14 +42,7 @@ class SendIRCommand(Tool):
         return ToolResponse.from_model(output)
 
     async def execute(self, input_data: SendIRCommandRequest) -> ToolResponse:
-        """Execute the IR command sending.
-
-        Args:
-            input_data: The validated input containing device_id and operation
-
-        Returns:
-            A response indicating success or failure of the IR command
-        """
+        """Execute the IR command sending."""
         logger.info(f"=== Sending IR Command ===")
         logger.info(
             f"Device: '{input_data.device_id}', Operation: '{input_data.operation}'"

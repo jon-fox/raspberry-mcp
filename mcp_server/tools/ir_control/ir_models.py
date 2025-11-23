@@ -1,8 +1,10 @@
 """Pydantic models for IR control tools."""
 
-from mcp_server.interfaces.tool import BaseToolInput
-from pydantic import Field, ConfigDict
 from typing import List, Optional
+
+from pydantic import Field, ConfigDict
+
+from mcp_server.interfaces.tool import BaseToolInput
 
 
 class SendIRCommandRequest(BaseToolInput):

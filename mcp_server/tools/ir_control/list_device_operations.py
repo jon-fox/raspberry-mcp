@@ -1,13 +1,13 @@
 """Tool for listing available operations for a registered device."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.tools.ir_control.ir_models import (
     ListDeviceOperationsRequest,
     ListDeviceOperationsResponse,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.device_registry import load_device_mapping
 
 logger = logging.getLogger(__name__)
@@ -32,14 +32,7 @@ class ListDeviceOperations(Tool):
         }
 
     async def execute(self, input_data: ListDeviceOperationsRequest) -> ToolResponse:
-        """Execute the list operations tool.
-
-        Args:
-            input_data: The validated input containing device_id
-
-        Returns:
-            A response listing available operations for the device
-        """
+        """Execute the list operations tool."""
         logger.info(f"Listing operations for device '{input_data.device_id}'")
 
         device_mapping = load_device_mapping(input_data.device_id)
@@ -58,12 +51,7 @@ class ListDeviceOperations(Tool):
         required_operations = device_mapping.get("required_operations", [])
         optional_operations = device_mapping.get("optional_operations", [])
 
-        # For backward compatibility with old format
         if not required_operations and not optional_operations:
-            logger.info(
-                f"Using backward compatibility mode for device '{input_data.device_id}'"
-            )
-            # Try to extract from old format
             all_codes = list(device_mapping.get("codes", {}).keys())
             required_operations = [
                 op for op in all_codes if op in ["power_on", "power_off"]
