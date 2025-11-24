@@ -1,8 +1,3 @@
-"""Simulated environment for testing climate control without real sensors.
-
-Simple singleton to simulate temperature/humidity that can be controlled programmatically.
-"""
-
 import threading
 import time
 from typing import Optional, Tuple

@@ -1,5 +1,3 @@
-"""Utility for controlling Shelly smart plugs via HTTP."""
-
 import requests
 from typing import Dict, Optional
 

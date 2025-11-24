@@ -1,5 +1,3 @@
-"""Interface definitions for the application."""
-
 from .tool import Tool, BaseToolInput, ToolResponse, ToolContent
 from .resource import Resource
 

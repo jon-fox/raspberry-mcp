@@ -1,5 +1,3 @@
-"""Interfaces for tool abstractions."""
-
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, ClassVar, Type, TypeVar
 from pydantic import BaseModel, Field

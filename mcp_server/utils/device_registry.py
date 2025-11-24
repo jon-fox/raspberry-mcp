@@ -1,5 +1,3 @@
-"""Utility for managing device mappings on Raspberry Pi."""
-
 import json
 from typing import Dict, List, Any
 from datetime import datetime

@@ -1,5 +1,3 @@
-"""Pydantic models for realistic climate control tool."""
-
 from mcp_server.interfaces.tool import BaseToolInput
 from pydantic import Field, ConfigDict
 from typing import Optional

@@ -1,5 +1,3 @@
-"""Service layer for managing tools."""
-
 from typing import Dict, List, Any
 from fastmcp import FastMCP
 from mcp_server.interfaces.tool import Tool, ToolResponse, ToolContent

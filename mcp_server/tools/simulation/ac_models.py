@@ -1,5 +1,3 @@
-"""Dummy AC control models."""
-
 from typing import Optional
 from pydantic import ConfigDict, Field
 from mcp_server.interfaces.tool import BaseToolInput

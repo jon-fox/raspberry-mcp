@@ -1,5 +1,3 @@
-"""Register Device Tools"""
-
 from .startir_listener import StartIRListener
 from .stopir_listener import StopIRListener
 from .clearir_events import ClearIREvents

@@ -1,5 +1,3 @@
-"""Service layer for managing resources."""
-
 from typing import Dict, List
 import re
 from fastmcp import FastMCP

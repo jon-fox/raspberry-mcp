@@ -1,5 +1,3 @@
-"""Tool exports."""
-
 from .ir_control import SendIRCommand
 from .register_devices import (
     StartIRListener,
