@@ -7,6 +7,7 @@ from mcp_server.tools.simulation.climate_models import (
     ClimateSimulationOutput,
 )
 from mcp_server.utils.simulated_environment import SimulatedEnvironment
+from mcp_server.utils.smart_plug import turn_on, turn_off
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,8 @@ class ClimateSimulation(Tool):
     description = (
         "Controls climate simulation for testing. "
         "'enable' starts simulation with optional temp/humidity. "
-        "'cool_ac' simulates AC cooling by 2°F (checks target temp). "
+        "'cool_ac' runs AC cooling cycle: reduces temp by 2°F per cycle until target_temp_f is reached. "
+        "Agent should repeatedly call cool_ac until response indicates target is reached (ac_running=False). "
         "'adjust_temp' manually adjusts temperature by delta. "
         "'status' shows current state. "
         "'disable' stops simulation and uses real sensors."
@@ -112,22 +114,25 @@ class ClimateSimulation(Tool):
                     )
 
                 if temp_f <= input_data.target_temp_f:
-                    logger.info(f"Already at target: {temp_f:.1f}°F ≤ {input_data.target_temp_f}°F")
+                    turn_off()
+                    env.set_ac_running(False)
+                    logger.info(f"Already at target: {temp_f:.1f}°F ≤ {input_data.target_temp_f}°F - AC/plug turned off")
                     output = ClimateSimulationOutput(
                         success=True,
-                        message=f"Target reached! Current {temp_f:.1f}°F ≤ target {input_data.target_temp_f}°F. AC not needed.",
+                        message=f"Target reached! Current {temp_f:.1f}°F ≤ target {input_data.target_temp_f}°F. AC turned off.",
                         current_temp_f=temp_f,
                         ac_running=False,
                         target_temp=input_data.target_temp_f,
                     )
                 else:
-                    env.adjust_temperature(-2.0)
-                    new_temp = temp_f - 2.0
-                    logger.info(f"AC cooling: {temp_f:.1f}°F → {new_temp:.1f}°F (target: {input_data.target_temp_f}°F)")
+                    turn_on()
+                    env.set_ac_running(True)
+                    env.set_target_temperature(input_data.target_temp_f)
+                    logger.info(f"AC cooling started at {temp_f:.1f}°F (target: {input_data.target_temp_f}°F) - AC/plug turned on")
                     output = ClimateSimulationOutput(
                         success=True,
-                        message=f"AC cooled from {temp_f:.1f}°F to {new_temp:.1f}°F (target: {input_data.target_temp_f}°F)",
-                        current_temp_f=new_temp,
+                        message=f"AC turned on at {temp_f:.1f}°F, cooling to target {input_data.target_temp_f}°F. Background thread will cool at 0.3°F/sec. Call again to check progress.",
+                        current_temp_f=temp_f,
                         ac_running=True,
                         target_temp=input_data.target_temp_f,
                     )
