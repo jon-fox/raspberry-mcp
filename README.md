@@ -4,12 +4,17 @@ A hardware smart hub using Raspberry Pi and the Model Context Protocol. Control 
 
 Extensible architecture allows easy addition of new tools, resources, and prompts for testing and expansion.
 
+Written in Python, using FastMCP framework.
+
 ## Prerequisites
 
 - Raspberry Pi 4 (arm64)
-- IR receiver connected to GPIO 27
-- IR LED transmitter connected to GPIO 17
 - Raspberry Pi OS installed with SSH enabled
+- If using pre written tools will need the following
+  - IR Sensor and Transmitter
+  - Photo Sensor
+  - Humidity Sensor
+  - A smart plug device
 
 ## Initial Setup
 
