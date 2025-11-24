@@ -69,7 +69,6 @@ class ControlSimulatedAC(Tool):
                         )
                     )
 
-                # Check if already at or below target
                 if temp_f <= input_data.target_temp_f:
                     logger.info(
                         f"Already at target: {temp_f:.1f}°F ≤ {input_data.target_temp_f}°F"

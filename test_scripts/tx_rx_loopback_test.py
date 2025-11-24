@@ -30,7 +30,6 @@ async def test_transmitter_receiver_loopback():
     print("RX: GPIO27 (Pin 13)")
     print()
 
-    # Start the IR listener
     print("1. Starting IR listener...")
     manager = IRListenerManager.get_instance()
     success, message = await manager.start_listening()
@@ -41,14 +40,11 @@ async def test_transmitter_receiver_loopback():
 
     print(f"SUCCESS: IR listener started: {message}")
 
-    # Clear any existing events
     print("2. Clearing previous events...")
     manager.clear_events()
 
-    # Wait a moment for listener to be ready
     await asyncio.sleep(1)
 
-    # Send a test IR signal
     print("3. Sending test IR signal...")
     tx_success, tx_message = await ir_send("nec", "0x12345678")
 
@@ -59,11 +55,9 @@ async def test_transmitter_receiver_loopback():
 
     print(f"SUCCESS: IR signal sent: {tx_message}")
 
-    # Wait for the signal to be received
     print("4. Waiting for signal detection...")
     await asyncio.sleep(2)
 
-    # Check if any events were captured
     recent_events = manager.get_recent_events(10)
 
     if len(recent_events) == 0:
@@ -85,7 +79,6 @@ async def test_transmitter_receiver_loopback():
                 f"   Signal {i+1}: {protocol} protocol, Code: {code}, {pulse_count} pulses"
             )
 
-    # Clean up
     print("5. Stopping IR listener...")
     await manager.stop_listening()
 

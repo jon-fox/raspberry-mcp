@@ -32,7 +32,6 @@ async def test_fixed_transmission():
 
     pi = None
     try:
-        # Connect to pigpio daemon
         print("1. Connecting to pigpio daemon...")
         pi = pigpio.pi()
         if not pi.connected:
@@ -40,49 +39,41 @@ async def test_fixed_transmission():
             return False
         print("SUCCESS: Connected to pigpiod")
 
-        # Setup GPIO pin properly
         print("2. Setting up GPIO17 for IR transmission...")
         pi.set_mode(TX_PIN, pigpio.OUTPUT)
         pi.set_PWM_frequency(TX_PIN, CARRIER_FREQ)
-        pi.set_PWM_dutycycle(TX_PIN, 0)  # Start with PWM off
+        pi.set_PWM_dutycycle(TX_PIN, 0)
         print(
             f"SUCCESS: GPIO17 configured: {CARRIER_FREQ}Hz, {DUTY_CYCLE/255*100:.0f}% duty cycle"
         )
 
-        # Test 1: Simple burst
         print("3. Sending 38kHz test burst...")
         pi.set_PWM_dutycycle(TX_PIN, DUTY_CYCLE)
-        await asyncio.sleep(0.1)  # 100ms burst
+        await asyncio.sleep(0.1)
         pi.set_PWM_dutycycle(TX_PIN, 0)
         print("SUCCESS: Test burst sent")
 
-        # Test 2: NEC-style pattern
         print("4. Sending NEC-style IR pattern...")
-
-        # AGC burst: 9ms on, 4.5ms off
         pi.set_PWM_dutycycle(TX_PIN, DUTY_CYCLE)
         await asyncio.sleep(0.009)  # 9ms
         pi.set_PWM_dutycycle(TX_PIN, 0)
-        await asyncio.sleep(0.0045)  # 4.5ms
+        await asyncio.sleep(0.0045)
 
-        # Few data bits: 560us on, varying off times
         for bit in [1, 0, 1, 1, 0]:
             pi.set_PWM_dutycycle(TX_PIN, DUTY_CYCLE)
-            await asyncio.sleep(0.00056)  # 560us on
+            await asyncio.sleep(0.00056)
             pi.set_PWM_dutycycle(TX_PIN, 0)
             if bit:
-                await asyncio.sleep(0.00169)  # 1.69ms off (bit 1)
+                await asyncio.sleep(0.00169)
             else:
-                await asyncio.sleep(0.00056)  # 560us off (bit 0)
+                await asyncio.sleep(0.00056)
 
-        # Final stop bit
         pi.set_PWM_dutycycle(TX_PIN, DUTY_CYCLE)
-        await asyncio.sleep(0.00056)  # 560us
+        await asyncio.sleep(0.00056)
         pi.set_PWM_dutycycle(TX_PIN, 0)
 
         print("SUCCESS: NEC pattern sent")
 
-        # Ensure PWM is off
         pi.set_PWM_dutycycle(TX_PIN, 0)
         print("5. PWM turned off")
 

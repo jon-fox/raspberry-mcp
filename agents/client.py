@@ -198,7 +198,6 @@ def main():
         # If a prompt was provided via command line, use it; otherwise prompt the user
         if args.prompt:
             query = args.prompt
-            # Clear the prompt so we don't reuse it in the loop
             args.prompt = None
         else:
             query = console.input("[bold yellow]You:[/bold yellow] ").strip()

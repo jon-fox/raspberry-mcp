@@ -79,7 +79,6 @@ class TroubleshootIR(Tool):
             )
             return ToolResponse.from_model(output)
 
-        # Check if operation exists
         if input_data.operation not in device_mapping.get("codes", {}):
             available_ops = list(device_mapping.get("codes", {}).keys())
             output = TroubleshootIRResponse(
@@ -133,7 +132,6 @@ class TroubleshootIR(Tool):
                 results.append(f"FAILED {description}: {message}")
                 logger.error(f"Test {tests_performed} failed: {message}")
 
-            # Wait between tests to avoid interference
             await asyncio.sleep(2)
 
         recommendations = [

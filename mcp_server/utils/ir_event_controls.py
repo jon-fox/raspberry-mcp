@@ -18,22 +18,17 @@ def _send_raw_timing_sync(pi, tx_pin: int, duty_cycle: int, timing_data: list) -
     logger.info(f"Sending raw timing: {len(timing_data)} pulses")
 
     try:
-        # Send each pulse
         for state, duration_us in timing_data:
             if duration_us <= 0:
                 continue
 
             if state == "low" or state == "mark":
-                # Carrier ON
                 pi.set_PWM_dutycycle(tx_pin, duty_cycle)
-            else:  # 'high', 'space', or anything else
-                # Carrier OFF
+            else:
                 pi.set_PWM_dutycycle(tx_pin, 0)
 
-            # Wait for the pulse duration
             time.sleep(duration_us / 1_000_000)
 
-        # Ensure carrier is off at end
         pi.set_PWM_dutycycle(tx_pin, 0)
         logger.info("Raw timing transmission completed")
         return True
@@ -50,7 +45,6 @@ def _send_nec_sync(pi, tx_pin: int, duty_cycle: int, hex_code: str) -> bool:
     logger = logging.getLogger(__name__)
 
     try:
-        # Convert hex to integer
         if hex_code.startswith("0x"):
             code = int(hex_code, 16)
         else:
@@ -58,7 +52,6 @@ def _send_nec_sync(pi, tx_pin: int, duty_cycle: int, hex_code: str) -> bool:
 
         logger.info(f"Sending NEC code: 0x{code:08X}")
 
-        # NEC timing (microseconds)
         HEADER_MARK = 9000
         HEADER_SPACE = 4500
         BIT_MARK = 560
@@ -66,28 +59,23 @@ def _send_nec_sync(pi, tx_pin: int, duty_cycle: int, hex_code: str) -> bool:
         ZERO_SPACE = 560
         STOP_BIT = 560
 
-        # Send header
         pi.set_PWM_dutycycle(tx_pin, duty_cycle)
         time.sleep(HEADER_MARK / 1_000_000)
         pi.set_PWM_dutycycle(tx_pin, 0)
         time.sleep(HEADER_SPACE / 1_000_000)
 
-        # Send 32 bits
         for i in range(32):
             bit = (code >> (31 - i)) & 1
 
-            # Mark
             pi.set_PWM_dutycycle(tx_pin, duty_cycle)
             time.sleep(BIT_MARK / 1_000_000)
 
-            # Space
             pi.set_PWM_dutycycle(tx_pin, 0)
             if bit:
                 time.sleep(ONE_SPACE / 1_000_000)
             else:
                 time.sleep(ZERO_SPACE / 1_000_000)
 
-        # Stop bit
         pi.set_PWM_dutycycle(tx_pin, duty_cycle)
         time.sleep(STOP_BIT / 1_000_000)
         pi.set_PWM_dutycycle(tx_pin, 0)
@@ -107,7 +95,6 @@ def _send_sony_sync(pi, tx_pin: int, duty_cycle: int, hex_code: str) -> bool:
     logger = logging.getLogger(__name__)
 
     try:
-        # Convert hex to integer
         if hex_code.startswith("0x"):
             code = int(hex_code, 16)
         else:
@@ -115,27 +102,22 @@ def _send_sony_sync(pi, tx_pin: int, duty_cycle: int, hex_code: str) -> bool:
 
         logger.info(f"Sending Sony code: 0x{code:08X}")
 
-        # Sony timing (microseconds)
         HEADER_MARK = 2400
         BIT_MARK = 600
         ONE_SPACE = 1200
         ZERO_SPACE = 600
 
-        # Send header
         pi.set_PWM_dutycycle(tx_pin, duty_cycle)
         time.sleep(HEADER_MARK / 1_000_000)
         pi.set_PWM_dutycycle(tx_pin, 0)
         time.sleep(ONE_SPACE / 1_000_000)
 
-        # Send 12 bits (Sony sends LSB first)
         for i in range(12):
             bit = (code >> i) & 1
 
-            # Mark
             pi.set_PWM_dutycycle(tx_pin, duty_cycle)
             time.sleep(BIT_MARK / 1_000_000)
 
-            # Space
             pi.set_PWM_dutycycle(tx_pin, 0)
             if bit:
                 time.sleep(ONE_SPACE / 1_000_000)
@@ -189,7 +171,6 @@ def ir_send(
 
     pi = None
     try:
-        # Connect to pigpio daemon
         pi = pigpio.pi()
         if not pi.connected:
             return (
@@ -197,14 +178,12 @@ def ir_send(
                 "pigpiod not running. Start with: sudo systemctl start pigpiod",
             )
 
-        # Setup GPIO
         pi.set_mode(TX_PIN, pigpio.OUTPUT)
         pi.set_PWM_frequency(TX_PIN, carrier_freq)
-        pi.set_PWM_dutycycle(TX_PIN, 0)  # Start OFF
+        pi.set_PWM_dutycycle(TX_PIN, 0)
 
         success = False
 
-        # Handle different protocols
         if protocol.lower() == "generic" and raw_timing_data:
             success = _send_raw_timing_sync(pi, TX_PIN, DUTY_CYCLE, raw_timing_data)
         elif protocol.lower() == "nec":
@@ -212,7 +191,6 @@ def ir_send(
         elif protocol.lower() == "sony":
             success = _send_sony_sync(pi, TX_PIN, DUTY_CYCLE, hex_code)
         else:
-            # Fallback to raw timing if available, otherwise error
             if raw_timing_data:
                 success = _send_raw_timing_sync(pi, TX_PIN, DUTY_CYCLE, raw_timing_data)
             else:
@@ -222,7 +200,6 @@ def ir_send(
                     f"Unsupported protocol '{protocol}' and no raw timing data available",
                 )
 
-        # Ensure carrier is off
         pi.set_PWM_dutycycle(TX_PIN, 0)
         pi.stop()
 
