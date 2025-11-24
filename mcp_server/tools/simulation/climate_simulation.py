@@ -19,10 +19,10 @@ class ClimateSimulation(Tool):
     description = (
         "Controls climate simulation for testing. "
         "'enable' starts simulation with optional temp/humidity. "
-        "'cool_ac' runs AC cooling cycle: reduces temp by 2°F per cycle until target_temp_f is reached. "
-        "Agent should repeatedly call cool_ac until response indicates target is reached (ac_running=False). "
+        "'cool_ac' starts AC cooling (background thread cools at 0.3°F/sec). "
+        "CRITICAL: Agent MUST repeatedly call 'status' to monitor progress until target is reached. "
+        "'status' checks current temp and automatically turns off AC when target is met. "
         "'adjust_temp' manually adjusts temperature by delta. "
-        "'status' shows current state. "
         "'disable' stops simulation and uses real sensors."
     )
     input_model = ClimateSimulationInput
@@ -145,12 +145,33 @@ class ClimateSimulation(Tool):
                     )
                 else:
                     status = env.get_status()
-                    output = ClimateSimulationOutput(
-                        success=True,
-                        message=f"Simulation active: {status['temp_f']}°F, {status['humidity']}% humidity",
-                        current_temp_f=status["temp_f"],
-                        current_humidity=status["humidity"],
-                    )
+                    target_temp = env.get_target_temperature()
+                    ac_running = status["ac_running"]
+
+                    if ac_running and target_temp is not None and status["temp_f"] <= target_temp:
+                        turn_off()
+                        env.set_ac_running(False)
+                        logger.info(f"Status check: Target {target_temp}°F reached at {status['temp_f']}°F - AC/plug turned off")
+                        output = ClimateSimulationOutput(
+                            success=True,
+                            message=f"Target reached! {status['temp_f']}°F ≤ {target_temp}°F. AC automatically turned off.",
+                            current_temp_f=status["temp_f"],
+                            current_humidity=status["humidity"],
+                            ac_running=False,
+                            target_temp=target_temp,
+                        )
+                    else:
+                        message = f"Simulation active: {status['temp_f']}°F, {status['humidity']}% humidity"
+                        if ac_running and target_temp:
+                            message += f" | AC cooling to {target_temp}°F (currently {status['temp_f'] - target_temp:.1f}°F above target)"
+                        output = ClimateSimulationOutput(
+                            success=True,
+                            message=message,
+                            current_temp_f=status["temp_f"],
+                            current_humidity=status["humidity"],
+                            ac_running=ac_running,
+                            target_temp=target_temp,
+                        )
 
             else:
                 output = ClimateSimulationOutput(
