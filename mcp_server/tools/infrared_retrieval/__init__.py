@@ -4,6 +4,7 @@ from .clear_events import ClearIREvents
 from .submit_mappings import SubmitMappings
 from .listener_status import GetListenerStatus
 from .send_ir_command import SendIRCommand
+from .troubleshoot import TroubleshootIR
 
 __all__ = [
     "StartIRListener",
@@ -12,7 +13,5 @@ __all__ = [
     "SubmitMappings",
     "GetListenerStatus",
     "SendIRCommand",
+    "TroubleshootIR",
 ]
-from .troubleshoot import TroubleshootIR
-
-__all__.append("TroubleshootIR")

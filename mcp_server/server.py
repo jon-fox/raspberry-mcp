@@ -18,6 +18,7 @@ from mcp_server.tools import (
     SubmitMappings,
     GetListenerStatus,
     SendIRCommand,
+    TroubleshootIR,
     # Sensor tools
     ReadHumiditySensor,
     ReadPhotoSensor,
@@ -47,6 +48,7 @@ def get_available_tools() -> List[Tool]:
         SubmitMappings(),
         GetListenerStatus(),
         SendIRCommand(),
+        TroubleshootIR(),
         # Sensor tools
         ReadHumiditySensor(),
         ReadPhotoSensor(),

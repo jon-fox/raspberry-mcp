@@ -126,6 +126,13 @@ Read the photo sensor
 
 ![Read Photo Sensor](images/claude_photo_sensor.png)
 
+**Send notification:**
+```
+Send me a notification saying "Temperature is 75°F"
+```
+
+![Send Notification](images/send_notification.png)
+
 ## Testing Without Claude
 
 The `agents/client.py` is an HTTP Stream client for testing the server without Claude Desktop.
@@ -208,12 +215,24 @@ Tests different power levels and frequencies to identify transmission issues.
 
 ## Available Tools
 
-- `GetMappingGuidance` - Get button suggestions for device types
-- `StartIrListener` / `StopIrListener` - Capture IR signals
-- `SubmitMappings` - Register device with operations
+### Infrared Device Control
 - `SendIRCommand` - Control any registered device
-- `ListDeviceOperations` - Show available operations for each device
+- `StartIRListener` / `StopIRListener` - Capture IR signals
+- `ClearIREvents` - Clear captured IR events
+- `SubmitMappings` - Register device with operations
+- `GetListenerStatus` - Check IR listener status
 - `TroubleshootIR` - Test different power levels and frequencies
+
+### Sensors
+- `ReadHumiditySensor` - Read DHT22 temperature and humidity
+- `ReadPhotoSensor` - Read ambient light levels
+
+### Smart Home
+- `ControlPlug` - Control Shelly smart plug (auto-discovery)
+- `ClimateSimulation` - Simulate climate for testing
+
+### Notifications
+- `SendNotification` - Send desktop notifications to your Mac/Linux machine
 
 ## Available Operations
 
