@@ -93,6 +93,31 @@ Add the following to your Claude Desktop MCP configuration file:
 
 Restart Claude Desktop after updating the configuration.
 
+### Example Claude Desktop Interactions
+
+Once configured, you can interact with the MCP server through Claude Desktop using natural language:
+
+**List available tools and schemas:**
+```
+List the MCP tools available and the schemas
+```
+
+![MCP Tools and Schemas](images/claude_mcp_with_schema.png)
+
+**Read humidity sensor:**
+```
+Read the humidity with mcp pi
+```
+
+![Read Humidity Sensor](images/claude_read_humidity.png)
+
+**Read photo sensor:**
+```
+Read the photo sensor
+```
+
+![Read Photo Sensor](images/claude_photo_sensor.png)
+
 ## Testing Without Claude
 
 The `agents/client.py` is an HTTP Stream client for testing the server without Claude Desktop.
@@ -117,7 +142,7 @@ Tell the MCP to start listening for IR signals. This calls the `StartIRListener`
 
 The listener automatically monitors GPIO 27 and captures signal timing data.
 
-![alt text](images/start_ir_listener.png)
+![Start IR Listener](images/start_ir_listener.png)
 
 ### 3. Capture IR Signals
 
@@ -135,7 +160,7 @@ Instruct the MCP to register your device with the captured signals in the order 
 
 The tool matches captured signals to operations in chronological order. Device configuration is saved to `/home/pi/.raspberry-mcp/devices.json`.
 
-![alt text](images/submit_mappings.png)
+![Submit Device Mappings](images/submit_mappings.png)
 
 ### 5. Clear IR Events
 
@@ -143,7 +168,7 @@ There is also an option to clear IR events if we want to start fresh and start l
 
 "Clear the IR events" will clear the events from the IR listener.
 
-![alt text](images/clear_ir_events.png)
+![Clear IR Events](images/clear_ir_events.png)
 
 ## Device Control
 
@@ -157,7 +182,7 @@ Tell the MCP to control your device. This calls the `SendIRCommand` tool:
 
 Transmits IR signal via GPIO 17 at 38kHz with 78% duty cycle, repeated 5x for reliability.
 
-![alt text](images/send_ir_command.png)
+![Send IR Command](images/send_ir_command.png)
 
 ### List Available Operations
 
