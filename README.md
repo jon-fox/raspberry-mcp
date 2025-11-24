@@ -55,9 +55,47 @@ The deployment script handles:
 - Transferring to Raspberry Pi via ssh
 - Starting container with privileged access for GPIO
 
-## Usage
+## Claude Desktop Setup
 
-The `agents/client.py` is an HTTP Stream client for testing the server, can be used instead of Claude.
+To use this MCP server with Claude Desktop, you need to install the MCP remote client. MCP Remote is an interface that allows Claude Desktop to connect to remote MCP servers over HTTP.
+
+### Prerequisites
+
+- Node.js installed on your local machine
+
+### Installation
+
+Install mcp-remote globally:
+
+```bash
+npm install -g mcp-remote
+```
+
+See [mcp-remote](https://github.com/geelen/mcp-remote) for more details.
+
+### Configuration
+
+Add the following to your Claude Desktop MCP configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "mcppi": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://mcppi.local:8000/mcp", "--allow-http"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after updating the configuration.
+
+## Testing Without Claude
+
+The `agents/client.py` is an HTTP Stream client for testing the server without Claude Desktop.
 
 ## Device Registration Workflow
 
