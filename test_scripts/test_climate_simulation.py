@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import asyncio
 from mcp_server.tools.simulation import SimulateClimate, ControlSimulatedAC
 from mcp_server.tools.simulation.simulation_models import SimulateClimateInput
