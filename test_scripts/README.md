@@ -5,11 +5,11 @@ Unified test suite for Raspberry Pi MCP hardware testing.
 ## Usage
 
 ```bash
-./test_cli.py --help              # Show help
-./test_cli.py ir-loopback         # Test IR TX->RX loopback
-./test_cli.py ir-validate         # Validate IR transmission
-./test_cli.py climate             # Climate control demo
-./test_cli.py all                 # Run all tests
+./test_cli.py --help
+./test_cli.py ir-loopback 
+./test_cli.py ir-validate       
+./test_cli.py climate           
+./test_cli.py all               
 ```
 
 ## Tests

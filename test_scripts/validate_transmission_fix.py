@@ -31,7 +31,9 @@ async def test_fixed_transmission():
         print("1. Connecting to pigpio daemon...")
         pi = pigpio.pi()
         if not pi.connected:
-            print("FAILED: pigpiod not running. Start with: sudo systemctl start pigpiod")
+            print(
+                "FAILED: pigpiod not running. Start with: sudo systemctl start pigpiod"
+            )
             return False
         print("SUCCESS: Connected to pigpiod")
 

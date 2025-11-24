@@ -95,7 +95,9 @@ class SendIRCommand(Tool):
                 if verified:
                     logger.info(f"  Verified {protocol} protocol from capture")
                 else:
-                    logger.info("  WARNING: Unverified protocol - using pattern matching")
+                    logger.info(
+                        "  WARNING: Unverified protocol - using pattern matching"
+                    )
 
                 logger.info(f"  Signal characteristics: {pulse_count} pulses captured")
                 logger.debug(f"  Full operation details: {operation_details}")

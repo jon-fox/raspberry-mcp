@@ -21,6 +21,8 @@ ssh user@mcppi.local
 
 ## Usage
 
+The `agents/client.py` is an HTTP Stream client for testing the server, can be used instead of Claude.
+
 ### Register a Device
 
 1. **Get button suggestions**: `GetMappingGuidance` with `device_type`
