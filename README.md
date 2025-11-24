@@ -1,8 +1,8 @@
 # Raspberry Pi MCP Server
 
-Control infrared devices via Raspberry Pi using the Model Context Protocol.
+A hardware smart hub using Raspberry Pi and the Model Context Protocol. Control infrared devices and sensors through natural language using Claude Desktop, ChatGPT, or custom agents.
 
-Mainly intended to be used with Claude or ChatGPT (when they finally make MCPs easier to use).
+Extensible architecture allows easy addition of new tools, resources, and prompts for testing and expansion.
 
 ## Prerequisites
 
