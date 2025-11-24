@@ -1,13 +1,13 @@
 """Simple tool for controlling climate simulation - replaces real sensor for testing."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.tools.simulation.simulation_models import (
     SimulateClimateInput,
     SimulateClimateOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.simulated_environment import SimulatedEnvironment
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class SimulateClimate(Tool):
 
     async def execute(self, input_data: SimulateClimateInput) -> ToolResponse:
         """Execute simulation control."""
-        logger.info(f"=== Simulation Control: {input_data.action} ===")
+        logger.info(f"Simulation action: {input_data.action}")
 
         try:
             env = SimulatedEnvironment.get_instance()
@@ -91,7 +91,6 @@ class SimulateClimate(Tool):
                     success=False, message=f"Unknown action: {input_data.action}"
                 )
 
-            logger.info(f"Result: {output.message}")
             return ToolResponse.from_model(output)
 
         except Exception as e:

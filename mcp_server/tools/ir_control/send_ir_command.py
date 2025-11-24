@@ -43,7 +43,7 @@ class SendIRCommand(Tool):
 
     async def execute(self, input_data: SendIRCommandRequest) -> ToolResponse:
         """Execute the IR command sending."""
-        logger.info(f"=== Sending IR Command ===")
+        logger.info("=== Sending IR Command ===")
         logger.info(
             f"Device: '{input_data.device_id}', Operation: '{input_data.operation}'"
         )
@@ -81,7 +81,7 @@ class SendIRCommand(Tool):
             protocol = device_mapping["protocol"]
             hex_code = device_mapping["codes"][input_data.operation]
 
-            logger.info(f"IR Command Details:")
+            logger.info("IR Command Details:")
             logger.info(f"  Protocol: {protocol}")
             logger.info(f"  IR Code: {hex_code}")
 
@@ -97,13 +97,13 @@ class SendIRCommand(Tool):
                 if verified:
                     logger.info(f"  ✓ Verified {protocol} protocol from capture")
                 else:
-                    logger.info(f"  ⚠ Unverified protocol - using pattern matching")
+                    logger.info("  ⚠ Unverified protocol - using pattern matching")
 
                 logger.info(f"  Signal characteristics: {pulse_count} pulses captured")
                 logger.debug(f"  Full operation details: {operation_details}")
             else:
                 logger.warning(
-                    f"  No detailed analysis available - using basic code only"
+                    "  No detailed analysis available - using basic code only"
                 )
 
         except KeyError as e:
@@ -117,7 +117,7 @@ class SendIRCommand(Tool):
             )
 
         logger.info(
-            f"Transmitting IR signal via GPIO17 at 38kHz with ~78% duty cycle (5x repeats for device control)..."
+            "Transmitting IR signal via GPIO17 at 38kHz with ~78% duty cycle (5x repeats for device control)..."
         )
 
         raw_timing_data = None
@@ -139,7 +139,7 @@ class SendIRCommand(Tool):
             message = f"IR transmission failed for '{input_data.operation}' on '{input_data.device_id}': {detail}"
             logger.error(f"IR transmission failed: {message}")
 
-        logger.info(f"=== IR Command Complete ===")
+        logger.info("=== IR Command Complete ===")
 
         output = SendIRCommandResponse(
             success=ok,

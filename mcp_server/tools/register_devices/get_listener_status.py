@@ -1,14 +1,14 @@
 """Tool for getting IR listener status and diagnostics."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.services.ir_listener_manager import IRListenerManager
 from mcp_server.tools.register_devices.register_models import (
     GetListenerStatusInput,
     GetListenerStatusOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,24 +31,13 @@ class GetListenerStatus(Tool):
         }
 
     async def execute(self, input_data: GetListenerStatusInput) -> ToolResponse:
-        """Execute the get listener status tool.
-
-        Args:
-            input_data: The validated input for the tool
-
-        Returns:
-            A response with detailed IR listener status information
-        """
-        logger.info("Retrieving IR listener status and diagnostics")
-
+        """Execute the get listener status tool."""
         manager = IRListenerManager.get_instance()
         status = manager.get_listener_status()
 
-        # Get recent events for analysis
         recent_events_1min = manager.get_recent_events(60)
         recent_events_5min = manager.get_recent_events(300)
 
-        # Build status message
         if status["is_listening"]:
             if status["total_events"] > 0:
                 status_msg = f"IR listener is ACTIVE and working! Captured {status['total_events']} signals total. Recent activity: {len(recent_events_1min)} signals in last minute, {len(recent_events_5min)} in last 5 minutes."
@@ -57,13 +46,8 @@ class GetListenerStatus(Tool):
         else:
             status_msg = "IR listener is not currently running. Use StartIRListener to begin capturing signals."
 
-        # Add latest event info if available
         if "latest_event_time" in status:
             status_msg += f" Latest signal captured at {status['latest_event_time']}."
-
-        logger.info(
-            f"IR listener status retrieved: {status['is_listening']}, {status['total_events']} total events"
-        )
 
         output = GetListenerStatusOutput(
             success=True,

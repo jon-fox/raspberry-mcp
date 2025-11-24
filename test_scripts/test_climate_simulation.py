@@ -29,7 +29,7 @@ async def main():
     target_temp = 65.0
 
     # 1. Enable simulation at hot temperature
-    print(f"\n1. Starting simulation at 75°F (too hot!)")
+    print("\n1. Starting simulation at 75°F (too hot!)")
     result = await sim_tool.execute(SimulateClimateInput(action="enable", temp_f=75.0))
     print(f"   {result.output.message}")
 
@@ -49,7 +49,7 @@ async def main():
 
         # Agent decides: too hot?
         if current_temp <= target_temp:
-            print(f"   - Decision: Target reached! ✓")
+            print("   - Decision: Target reached! ✓")
             # Agent would turn off real AC here
             result = await ac_tool.execute(ControlACInput(action="turn_off"))
             print(f"   - {result.output.message}")

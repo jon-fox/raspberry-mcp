@@ -97,7 +97,7 @@ async def test_fixed_transmission():
                 pi.set_PWM_dutycycle(TX_PIN, 0)
                 pi.stop()
                 print("✅ pigpio connection closed")
-            except:
+            except Exception:
                 pass
 
 

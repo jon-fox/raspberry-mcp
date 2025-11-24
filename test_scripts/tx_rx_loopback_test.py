@@ -10,7 +10,6 @@ Run this to verify the fix works.
 """
 import sys
 import asyncio
-import time
 import logging
 
 # Add the parent directory to Python path

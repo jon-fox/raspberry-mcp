@@ -1,5 +1,5 @@
-import asyncio
 import time
+import logging
 
 try:
     import pigpio
@@ -12,7 +12,6 @@ except ImportError:
 
 def _send_raw_timing_sync(pi, tx_pin: int, duty_cycle: int, timing_data: list) -> bool:
     """Send IR signal using raw timing data - SYNCHRONOUS."""
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -244,7 +243,7 @@ def ir_send(
             try:
                 pi.set_PWM_dutycycle(TX_PIN, 0)
                 pi.stop()
-            except:
+            except Exception:
                 pass
         return False, f"IR transmission error: {str(e)}"
 
@@ -252,6 +251,6 @@ def ir_send(
         try:
             if pi is not None:
                 pi.stop()
-        except:
+        except Exception:
             pass
         return False, f"IR send failed: {str(e)}"

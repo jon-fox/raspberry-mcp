@@ -62,6 +62,7 @@ class ResourceService:
         uri_params = set(re.findall(r"\{([^}]+)\}", uri_pattern))
 
         if not uri_params:
+
             async def static_handler() -> ResourceResponse:
                 """Handle static resource request."""
                 return await resource.read()

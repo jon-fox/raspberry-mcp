@@ -9,16 +9,22 @@ T = TypeVar("T", bound=BaseModel)
 
 class BaseToolInput(BaseModel):
     """Base class for tool input models."""
+
     model_config = {"extra": "forbid"}
 
 
 class ToolContent(BaseModel):
     """Model for content in tool responses."""
+
     type: str = Field(default="text", description="Content type identifier")
     content_id: Optional[str] = Field(None, description="Optional content identifier")
     text: Optional[str] = Field(None, description="Text content when type='text'")
-    json_data: Optional[Dict[str, Any]] = Field(None, description="JSON data when type='json'")
-    model: Optional[Any] = Field(None, exclude=True, description="Pydantic model instance")
+    json_data: Optional[Dict[str, Any]] = Field(
+        None, description="JSON data when type='json'"
+    )
+    model: Optional[Any] = Field(
+        None, exclude=True, description="Pydantic model instance"
+    )
 
     def model_post_init(self, __context: Any) -> None:
         """Post-initialization hook to handle model conversion."""
@@ -31,6 +37,7 @@ class ToolContent(BaseModel):
 
 class ToolResponse(BaseModel):
     """Model for tool responses."""
+
     content: List[ToolContent]
 
     @classmethod
@@ -48,6 +55,7 @@ class ToolResponse(BaseModel):
 
 class Tool(ABC):
     """Abstract base class for all tools."""
+
     name: ClassVar[str]
     description: ClassVar[str]
     input_model: ClassVar[Type[BaseToolInput]]

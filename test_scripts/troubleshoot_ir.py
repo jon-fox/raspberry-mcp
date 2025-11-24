@@ -64,7 +64,7 @@ class TroubleshootIR(Tool):
 
     async def execute(self, input_data: TroubleshootIRRequest) -> ToolResponse:
         """Execute IR troubleshooting with different settings."""
-        logger.info(f"=== Troubleshooting IR Device ===")
+        logger.info("=== Troubleshooting IR Device ===")
         logger.info(
             f"Device: '{input_data.device_id}', Operation: '{input_data.operation}'"
         )

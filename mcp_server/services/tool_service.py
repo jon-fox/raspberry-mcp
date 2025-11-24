@@ -56,6 +56,7 @@ class ToolService:
     def register_mcp_handlers(self, mcp: FastMCP) -> None:
         """Register all tools as MCP handlers."""
         for tool in self._tools.values():
+
             def create_handler(tool_instance):
                 async def handler(input_data: tool_instance.input_model):
                     f'"""{tool_instance.description}"""'

@@ -6,6 +6,7 @@ from typing import Optional, Dict, List, Tuple
 
 try:
     import pigpio
+
     PIGPIO_AVAILABLE = True
 except ImportError:
     PIGPIO_AVAILABLE = False
@@ -66,7 +67,10 @@ class IRListenerManager:
             self._pi = pigpio.pi()
 
             if not self._pi.connected:
-                return False, "pigpiod not running - start with: sudo systemctl start pigpiod"
+                return (
+                    False,
+                    "pigpiod not running - start with: sudo systemctl start pigpiod",
+                )
 
             logger.info(f"Setting up IR receiver on GPIO{self.PIN}")
 
@@ -94,7 +98,10 @@ class IRListenerManager:
 
             self._is_listening = True
             logger.info(f"IR listener started on GPIO{self.PIN}")
-            return True, f"IR listener started on GPIO{self.PIN}. Press remote buttons to capture signals."
+            return (
+                True,
+                f"IR listener started on GPIO{self.PIN}. Press remote buttons to capture signals.",
+            )
 
         except Exception as e:
             logger.error(f"Failed to start IR listener: {e}")
@@ -131,7 +138,10 @@ class IRListenerManager:
 
             events_count = len(self._ir_events)
             logger.info(f"IR listener stopped. Captured {events_count} events")
-            return True, f"IR listener stopped successfully. Captured {events_count} events."
+            return (
+                True,
+                f"IR listener stopped successfully. Captured {events_count} events.",
+            )
 
         except Exception as e:
             logger.error(f"Failed to stop IR listener: {e}")
@@ -224,7 +234,9 @@ class IRListenerManager:
                 remove_count = self._max_events // 10
                 self._ir_events = self._ir_events[remove_count:]
 
-            logger.info(f"Signal {signal_number}: {len(timing_data)} pulses, {total_duration}μs")
+            logger.info(
+                f"Signal {signal_number}: {len(timing_data)} pulses, {total_duration}μs"
+            )
 
         except Exception as e:
             logger.error(f"Signal processing failed: {e}")
@@ -248,7 +260,9 @@ class IRListenerManager:
             diff -= 4294967296
         return abs(diff)
 
-    def _analyze_signal(self, timing_data: List[Tuple[str, int]], signal_number: int) -> Dict:
+    def _analyze_signal(
+        self, timing_data: List[Tuple[str, int]], signal_number: int
+    ) -> Dict:
         """Analyze IR signal and generate unique code."""
         if not timing_data:
             return {"protocol": "Empty", "code": "0x00000000", "raw_timing_data": []}
@@ -257,12 +271,20 @@ class IRListenerManager:
 
         # Basic validation
         if total_duration < 1000:
-            return {"protocol": "Noise", "code": "0x00000000", "raw_timing_data": timing_data}
+            return {
+                "protocol": "Noise",
+                "code": "0x00000000",
+                "raw_timing_data": timing_data,
+            }
 
         # Try NEC protocol detection
         if len(timing_data) >= 4:
             first_low = timing_data[0][1] if timing_data[0][0] == "low" else 0
-            first_high = timing_data[1][1] if len(timing_data) > 1 and timing_data[1][0] == "high" else 0
+            first_high = (
+                timing_data[1][1]
+                if len(timing_data) > 1 and timing_data[1][0] == "high"
+                else 0
+            )
 
             # NEC AGC pattern: 9ms low, 4.5ms high
             if 7000 <= first_low <= 12000 and 3000 <= first_high <= 6000:
@@ -307,7 +329,9 @@ class IRListenerManager:
 
             if len(data_bits) >= 16:
                 address = sum(data_bits[i] << i for i in range(8) if i < len(data_bits))
-                command = sum(data_bits[i + 8] << i for i in range(8) if (i + 8) < len(data_bits))
+                command = sum(
+                    data_bits[i + 8] << i for i in range(8) if (i + 8) < len(data_bits)
+                )
 
                 return {
                     "protocol": "NEC",

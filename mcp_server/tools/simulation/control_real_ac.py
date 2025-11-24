@@ -1,15 +1,15 @@
 """Realistic AC control tool with Shelly smart plug integration."""
 
-from typing import Dict, Any, Optional
 import logging
 import threading
 import time
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.tools.simulation.climate_models import (
     ControlRealACInput,
     ControlRealACOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.simulated_environment import SimulatedEnvironment
 from mcp_server.utils.smart_plug import turn_on, turn_off, get_ac_state
 
@@ -133,37 +133,27 @@ class ClimateController:
 
         if not ac_running and should_turn_on:
             logger.info(
-                f"[CYCLE] Turning ON AC - temp {temp_f:.1f}°F > {target_temp + self._hysteresis_high:.1f}°F"
+                f"Turning ON AC: {temp_f:.1f}°F > {target_temp + self._hysteresis_high:.1f}°F"
             )
             self._set_ac_state(True, env)
 
         elif ac_running and should_turn_off:
             logger.info(
-                f"[CYCLE] Turning OFF AC - temp {temp_f:.1f}°F <= {target_temp - self._hysteresis_low:.1f}°F"
+                f"Turning OFF AC: {temp_f:.1f}°F <= {target_temp - self._hysteresis_low:.1f}°F"
             )
             self._set_ac_state(False, env)
-
-        else:
-            state_str = "ON" if ac_running else "OFF"
-            logger.debug(
-                f"[AC {state_str}] Current: {temp_f:.1f}°F, Target: {target_temp:.1f}°F"
-            )
 
     def _set_ac_state(self, turn_on_ac: bool, env: SimulatedEnvironment):
         """Set AC state (both Shelly plug and simulation)."""
         try:
             if turn_on_ac:
                 success = turn_on()
-                if success:
-                    logger.info("[SHELLY] Plug turned ON - HTTP 200")
-                else:
-                    logger.error("[SHELLY] Failed to turn plug ON")
+                if not success:
+                    logger.error("Failed to turn Shelly plug ON")
             else:
                 success = turn_off()
-                if success:
-                    logger.info("[SHELLY] Plug turned OFF - HTTP 200")
-                else:
-                    logger.error("[SHELLY] Failed to turn plug OFF")
+                if not success:
+                    logger.error("Failed to turn Shelly plug OFF")
 
             env.set_ac_running(turn_on_ac)
 
@@ -197,7 +187,7 @@ class ControlRealAC(Tool):
 
     async def execute(self, input_data: ControlRealACInput) -> ToolResponse:
         """Execute AC control command."""
-        logger.info(f"=== Real AC Control: {input_data.action} ===")
+        logger.info(f"Real AC control: {input_data.action}")
 
         env = SimulatedEnvironment.get_instance()
         controller = ClimateController.get_instance()

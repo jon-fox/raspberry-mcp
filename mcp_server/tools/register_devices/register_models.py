@@ -1,9 +1,10 @@
 from typing import List, Optional
+
 from pydantic import ConfigDict, Field
+
 from mcp_server.interfaces.tool import BaseToolInput
 
 
-# Start IR Listener
 class StartIrListenerInput(BaseToolInput):
     """No input needed; the server auto-detects the IR receiver."""
 
@@ -35,7 +36,6 @@ class StartIrListenerOutput(BaseToolInput):
     )
 
 
-# Stop IR Listener
 class StopIrListenerInput(BaseToolInput):
     """Stops the background IR listener."""
 
@@ -62,7 +62,6 @@ class StopIrListenerOutput(BaseToolInput):
     )
 
 
-### Clear IR Events
 class ClearIrEventsInput(BaseToolInput):
     """Clears recent captured presses so the next mapping is unambiguous."""
 
@@ -85,7 +84,6 @@ class ClearIrEventsOutput(BaseToolInput):
     )
 
 
-# Submit Mappings
 class SubmitMappingsInput(BaseToolInput):
     model_config = ConfigDict(
         json_schema_extra={
@@ -158,7 +156,6 @@ class SubmitMappingsOutput(BaseToolInput):
     )
 
 
-# Get Listener Status
 class GetListenerStatusInput(BaseToolInput):
     """Gets detailed status information about the IR listener."""
 

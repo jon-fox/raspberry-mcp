@@ -1,13 +1,13 @@
 """Dummy AC control tool - simulates AC cooling by adjusting temperature."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.tools.simulation.ac_models import (
     ControlACInput,
     ControlACOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.utils.simulated_environment import SimulatedEnvironment
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class ControlSimulatedAC(Tool):
 
     async def execute(self, input_data: ControlACInput) -> ToolResponse:
         """Execute AC control command."""
-        logger.info(f"=== AC Control: {input_data.action} ===")
+        logger.info(f"AC control: {input_data.action}")
 
         try:
             env = SimulatedEnvironment.get_instance()

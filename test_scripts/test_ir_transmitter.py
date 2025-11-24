@@ -39,7 +39,9 @@ class TestIRTransmitter(Tool):
         interval_seconds = input_data.interval_seconds
         errors = []
 
-        logger.info(f"Starting IR transmitter test: {input_data.duration_minutes} min, {interval_seconds}s intervals")
+        logger.info(
+            f"Starting IR transmitter test: {input_data.duration_minutes} min, {interval_seconds}s intervals"
+        )
 
         test_patterns = [
             ("nec", "0x00FF12ED"),
@@ -65,7 +67,10 @@ class TestIRTransmitter(Tool):
                 next_time = start_time + (transmissions_sent * interval_seconds)
                 current_time = time.time()
 
-                if next_time > current_time and (next_time - start_time) < duration_seconds:
+                if (
+                    next_time > current_time
+                    and (next_time - start_time) < duration_seconds
+                ):
                     await asyncio.sleep(next_time - current_time)
 
         except asyncio.CancelledError:

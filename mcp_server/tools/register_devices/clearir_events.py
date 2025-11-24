@@ -1,14 +1,14 @@
 """Tool for clearing IR events."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.services.ir_listener_manager import IRListenerManager
 from mcp_server.tools.register_devices.register_models import (
     ClearIrEventsInput,
     ClearIrEventsOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,27 +31,14 @@ class ClearIREvents(Tool):
         }
 
     async def execute(self, input_data: ClearIrEventsInput) -> ToolResponse:
-        """Execute the clear IR events tool.
-
-        Args:
-            input_data: The validated input for the tool
-
-        Returns:
-            A response confirming the cleared IR events
-        """
-        logger.info("Clearing IR events from listener manager")
+        """Execute the clear IR events tool."""
         manager = IRListenerManager.get_instance()
-
-        # Get count before clearing for logging
-        events_before = len(
-            manager.get_recent_events(3600)
-        )  # Get last hour's events for count
+        events_before = len(manager.get_recent_events(3600))
         manager.clear_events()
-        logger.info(f"Successfully cleared {events_before} IR events from memory")
+        logger.info(f"Cleared {events_before} IR events")
 
         output = ClearIrEventsOutput(
             success=True,
             message="IR events cleared successfully.",
         )
-        logger.info("IR events clear operation completed successfully")
         return ToolResponse.from_model(output)

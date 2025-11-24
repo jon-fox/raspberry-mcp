@@ -1,14 +1,14 @@
 """Tool for starting the IR listener."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.services.ir_listener_manager import IRListenerManager
 from mcp_server.tools.register_devices.register_models import (
     StartIrListenerInput,
     StartIrListenerOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,20 +31,12 @@ class StartIRListener(Tool):
         }
 
     async def execute(self, input_data: StartIrListenerInput) -> ToolResponse:
-        """Execute the start IR listener tool.
-
-        Args:
-            input_data: The validated input for the tool
-
-        Returns:
-            A response confirming the start IR listener
-        """
-        logger.info("Starting IR listener service")
+        """Execute the start IR listener tool."""
         manager = IRListenerManager.get_instance()
         success, message = await manager.start_listening()
 
         if success:
-            logger.info(f"IR listener started successfully: {message}")
+            logger.info(f"IR listener started: {message}")
         else:
             logger.error(f"Failed to start IR listener: {message}")
 
@@ -52,5 +44,4 @@ class StartIRListener(Tool):
             success=success,
             message=message,
         )
-        logger.info(f"IR listener start operation completed with success={success}")
         return ToolResponse.from_model(output)

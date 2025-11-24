@@ -1,14 +1,14 @@
 """Tool for stopping the IR listener."""
 
-from typing import Dict, Any
 import logging
+from typing import Dict, Any
 
+from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.services.ir_listener_manager import IRListenerManager
 from mcp_server.tools.register_devices.register_models import (
     StopIrListenerInput,
     StopIrListenerOutput,
 )
-from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.services.ir_listener_manager import IRListenerManager
 
 logger = logging.getLogger(__name__)
 
@@ -33,20 +33,12 @@ class StopIRListener(Tool):
         }
 
     async def execute(self, input_data: StopIrListenerInput) -> ToolResponse:
-        """Execute the stop IR listener tool.
-
-        Args:
-            input_data: The validated input for the tool
-
-        Returns:
-            A response confirming the stop IR listener
-        """
-        logger.info("Stopping IR listener service")
+        """Execute the stop IR listener tool."""
         manager = IRListenerManager.get_instance()
         success, message = await manager.stop_listening()
 
         if success:
-            logger.info(f"IR listener stopped successfully: {message}")
+            logger.info(f"IR listener stopped: {message}")
         else:
             logger.error(f"Failed to stop IR listener: {message}")
 
@@ -54,5 +46,4 @@ class StopIRListener(Tool):
             success=success,
             message=message,
         )
-        logger.info(f"IR listener stop operation completed with success={success}")
         return ToolResponse.from_model(output)

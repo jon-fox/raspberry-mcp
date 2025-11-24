@@ -16,7 +16,7 @@ def get_plug_info(ip: str = PLUG_IP) -> Optional[Dict]:
         )
         if response.status_code == 200:
             return response.json().get("result", {})
-    except:
+    except Exception:
         pass
     return None
 
@@ -31,7 +31,7 @@ def get_plug_status(ip: str = PLUG_IP, switch_id: int = 0) -> Optional[Dict]:
         )
         if response.status_code == 200:
             return response.json().get("result", {})
-    except:
+    except Exception:
         pass
     return None
 
@@ -53,7 +53,7 @@ def toggle_plug(ip: str = PLUG_IP, switch_id: int = 0) -> bool:
             timeout=2,
         )
         return response.status_code == 200
-    except:
+    except Exception:
         return False
 
 
@@ -85,7 +85,7 @@ def set_plug(
             timeout=2,
         )
         return response.status_code == 200
-    except:
+    except Exception:
         return False
 
 

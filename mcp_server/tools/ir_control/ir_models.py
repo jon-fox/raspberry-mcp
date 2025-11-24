@@ -36,5 +36,9 @@ class SendIRCommandResponse(BaseToolInput):
 
     success: bool = Field(description="Whether the IR command was sent successfully")
     message: str = Field(description="Details about the command execution")
-    device_id: Optional[str] = Field(default=None, description="The device that was controlled")
-    operation: Optional[str] = Field(default=None, description="The operation that was performed")
+    device_id: Optional[str] = Field(
+        default=None, description="The device that was controlled"
+    )
+    operation: Optional[str] = Field(
+        default=None, description="The operation that was performed"
+    )

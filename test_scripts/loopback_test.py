@@ -1,6 +1,7 @@
 # sweep_loopback.py  (TX=GPIO17 pin11, RX=GPIO27 pin13)
 # sudo systemctl start pigpiod
-import pigpio, time
+import pigpio
+import time
 
 TX, RX = 17, 27
 FREQS = [36000, 38000, 40000]  # try common carriers
@@ -19,9 +20,9 @@ pi.set_pull_up_down(RX, pigpio.PUD_UP)
 def measure():
     edges = 0
 
-    def cbf(g, l, t):
+    def cbf(g, level, t):
         nonlocal edges
-        if l == 0:
+        if level == 0:
             edges += 1
 
     cb = pi.callback(RX, pigpio.EITHER_EDGE, cbf)
