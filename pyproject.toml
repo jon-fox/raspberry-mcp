@@ -12,6 +12,7 @@ dependencies = [
     "gpiod>=2.0.0; sys_platform == 'linux'",
     "pydantic>=2.0.0",
     "atomic-agents>=2.2.0",
+    "zeroconf>=0.148.0",
 ]
 
 [dependency-groups]

@@ -8,13 +8,16 @@ Written in Python, using FastMCP framework.
 
 ## Prerequisites
 
+**Required:**
 - Raspberry Pi 4 (arm64)
 - Raspberry Pi OS installed with SSH enabled
-- If using pre written tools will need the following
-  - IR Sensor and Transmitter
-  - Photo Sensor
-  - Humidity Sensor
-  - A smart plug device
+- Docker and Python 3.12+
+
+**Optional (for included hardware tools):**
+- IR receiver (GPIO 27) and IR LED transmitter (GPIO 17) for infrared device control
+- DHT22 temperature/humidity sensor (GPIO 17)
+- Photo sensor (GPIO 27)
+- Shelly smart plug (for AC control examples)
 
 ## Initial Setup
 

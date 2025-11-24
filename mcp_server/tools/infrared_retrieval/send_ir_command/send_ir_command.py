@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 
 from mcp_server.interfaces.tool import Tool, ToolResponse
-from mcp_server.tools.ir_control.ir_models import (
+from mcp_server.tools.infrared_retrieval.send_ir_command.command_models import (
     SendIRCommandRequest,
     SendIRCommandResponse,
 )

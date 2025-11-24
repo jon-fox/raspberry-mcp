@@ -1,90 +1,74 @@
-from mcp_server.interfaces.tool import BaseToolInput
-from pydantic import Field, ConfigDict
 from typing import Optional
+from pydantic import ConfigDict, Field
+from mcp_server.interfaces.tool import BaseToolInput
 
 
-class ControlRealACInput(BaseToolInput):
-    """Request model for controlling real AC with Shelly plug."""
+class ClimateSimulationInput(BaseToolInput):
+    """Input for climate simulation control."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"action": "set_target", "target_temp_f": 72.0},
-                {"action": "turn_on"},
-                {"action": "turn_off"},
+                {"action": "enable", "temp_f": 75.0, "humidity": 50.0},
+                {"action": "cool_ac", "target_temp_f": 68.0},
+                {"action": "adjust_temp", "delta_f": -2.0},
                 {"action": "status"},
-                {"action": "stop_auto"},
+                {"action": "disable"},
             ]
         }
     )
 
     action: str = Field(
-        description=(
-            "Action to perform: "
-            "'set_target' to enable automatic control with target temperature, "
-            "'turn_on' to manually turn on AC (requires simulation enabled), "
-            "'turn_off' to manually turn off AC, "
-            "'status' to get current state, "
-            "'stop_auto' to disable automatic control"
-        ),
-        examples=["set_target", "turn_on", "turn_off", "status", "stop_auto"],
+        ...,
+        description="Action: 'enable' (start simulation), 'disable' (stop), 'cool_ac' (AC cools by 2°F), 'adjust_temp' (manual temp change), 'status' (get current state)",
+        pattern="^(enable|disable|cool_ac|adjust_temp|status)$",
+        examples=["enable", "disable", "cool_ac", "adjust_temp", "status"],
     )
-
+    temp_f: Optional[float] = Field(
+        None,
+        description="Starting temperature in Fahrenheit (for 'enable' action)",
+        ge=32.0,
+        le=120.0,
+    )
+    humidity: Optional[float] = Field(
+        None,
+        description="Starting humidity percentage (for 'enable' action)",
+        ge=0.0,
+        le=100.0,
+    )
+    delta_f: Optional[float] = Field(
+        None,
+        description="Temperature change in degrees F (for 'adjust_temp' action, can be negative)",
+        ge=-20.0,
+        le=20.0,
+    )
     target_temp_f: Optional[float] = Field(
-        default=None,
-        description="Target temperature in Fahrenheit (required for 'set_target' action)",
-        examples=[70.0, 72.0, 75.0],
+        None,
+        description="Target temperature in Fahrenheit (for 'cool_ac' action)",
         ge=60.0,
         le=85.0,
     )
 
 
-class ControlRealACOutput(BaseToolInput):
-    """Response model for real AC control."""
+class ClimateSimulationOutput(BaseToolInput):
+    """Output from climate simulation control."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
                     "success": True,
-                    "message": "Automatic control enabled, target: 72.0°F",
-                    "ac_running": True,
-                    "current_temp": 78.5,
-                    "target_temp": 72.0,
-                    "auto_control_enabled": True,
+                    "message": "Simulation enabled at 75°F, 50% humidity",
+                    "current_temp_f": 75.0,
+                    "current_humidity": 50.0,
                 }
             ]
         }
     )
 
-    success: bool = Field(
-        description="Whether the operation succeeded",
-        examples=[True, False],
-    )
-
-    message: str = Field(
-        description="Description of the result",
-        examples=["AC turned ON", "Target reached: 72.0°F"],
-    )
-
-    ac_running: bool = Field(
-        default=False,
-        description="Current AC state (Shelly plug on/off)",
-    )
-
-    current_temp: Optional[float] = Field(
-        default=None,
-        description="Current temperature in Fahrenheit",
-        examples=[72.5, 75.0],
-    )
-
-    target_temp: Optional[float] = Field(
-        default=None,
-        description="Target temperature in Fahrenheit",
-        examples=[72.0, 75.0],
-    )
-
-    auto_control_enabled: bool = Field(
-        default=False,
-        description="Whether automatic temperature control is active",
-    )
+    success: bool = Field(..., description="Whether the action was successful")
+    message: str = Field(..., description="Status message")
+    current_temp_f: Optional[float] = Field(None, description="Current temperature in Fahrenheit")
+    current_humidity: Optional[float] = Field(None, description="Current humidity percentage")
+    ac_running: Optional[bool] = Field(None, description="Whether AC is running (for cool_ac action)")
+    target_temp: Optional[float] = Field(None, description="Target temperature (for cool_ac action)")

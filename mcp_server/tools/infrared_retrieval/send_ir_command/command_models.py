@@ -1,7 +1,5 @@
 from typing import Optional
-
 from pydantic import Field, ConfigDict
-
 from mcp_server.interfaces.tool import BaseToolInput
 
 

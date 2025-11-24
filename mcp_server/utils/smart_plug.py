@@ -1,7 +1,56 @@
+import os
 import requests
-from typing import Dict, Optional
+import socket
+import time
+from typing import Dict, Optional, List
+from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
 
-PLUG_IP = "10.0.0.113"
+
+class ShellyDiscoveryListener(ServiceListener):
+    def __init__(self):
+        self.devices: List[Dict[str, str]] = []
+
+    def add_service(self, zc: Zeroconf, type_: str, name: str) -> None:
+        info = zc.get_service_info(type_, name)
+        if info:
+            addresses = [socket.inet_ntoa(addr) for addr in info.addresses]
+            if addresses:
+                self.devices.append({"name": name, "ip": addresses[0]})
+
+    def remove_service(self, _zc: Zeroconf, _type_: str, _name: str) -> None:
+        pass
+
+    def update_service(self, _zc: Zeroconf, _type_: str, _name: str) -> None:
+        pass
+
+
+def discover_shelly_devices(timeout: int = 3) -> List[Dict[str, str]]:
+    zeroconf = Zeroconf()
+    listener = ShellyDiscoveryListener()
+    browser = ServiceBrowser(zeroconf, "_shelly._tcp.local.", listener)
+    time.sleep(timeout)
+    browser.cancel()
+    zeroconf.close()
+    return listener.devices
+
+
+def get_default_plug_ip() -> str:
+    env_ip = os.getenv("SMART_PLUG_IP")
+    if env_ip:
+        return env_ip
+
+    try:
+        devices = discover_shelly_devices()
+        if devices:
+            return devices[0]["ip"]
+    except Exception:
+        pass
+
+    return "10.0.0.113"
+
+
+# NOTE setting this globally for script
+PLUG_IP = get_default_plug_ip()
 
 
 def get_plug_info(ip: str = PLUG_IP) -> Optional[Dict]:

@@ -24,9 +24,9 @@ from mcp_server.tools import (
     # Notification tools
     SendNotification,
     # Simulation tools
-    SimulateClimate,
-    ControlSimulatedAC,
-    ControlRealAC,
+    ClimateSimulation,
+    # Smart plug tools
+    ControlPlug,
 )
 
 # Configure logging
@@ -53,9 +53,9 @@ def get_available_tools() -> List[Tool]:
         # Notification tools
         SendNotification(),
         # Simulation tools
-        SimulateClimate(),
-        ControlSimulatedAC(),
-        ControlRealAC(),
+        ClimateSimulation(),
+        # Smart plug tools
+        ControlPlug(),
     ]
     logger.info(f"Successfully initialized {len(tools)} tools")
     return tools

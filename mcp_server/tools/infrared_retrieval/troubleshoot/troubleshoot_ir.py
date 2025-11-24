@@ -2,9 +2,11 @@ import asyncio
 import logging
 from typing import Dict, Any
 
-from pydantic import Field, ConfigDict
-
-from mcp_server.interfaces.tool import Tool, ToolResponse, BaseToolInput
+from mcp_server.interfaces.tool import Tool, ToolResponse
+from mcp_server.tools.infrared_retrieval.troubleshoot.troubleshoot_models import (
+    TroubleshootIRRequest,
+    TroubleshootIRResponse,
+)
 from mcp_server.utils.device_registry import (
     load_device_mapping,
     get_device_operation_details,
@@ -12,36 +14,6 @@ from mcp_server.utils.device_registry import (
 from mcp_server.utils.ir_event_controls import ir_send
 
 logger = logging.getLogger(__name__)
-
-
-class TroubleshootIRRequest(BaseToolInput):
-    """Request model for IR troubleshooting."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {"device_id": "living_room_tv", "operation": "power_on"},
-            ]
-        }
-    )
-
-    device_id: str = Field(
-        description="The ID of the device to troubleshoot",
-        examples=["living_room_tv"],
-    )
-
-    operation: str = Field(
-        description="The operation to test with different power/frequency settings",
-        examples=["power_on", "power_off"],
-    )
-
-
-class TroubleshootIRResponse(BaseToolInput):
-    """Response model for IR troubleshooting."""
-
-    success: bool = Field(description="Whether troubleshooting completed")
-    message: str = Field(description="Troubleshooting results and recommendations")
-    tests_performed: int = Field(description="Number of test transmissions sent")
 
 
 class TroubleshootIR(Tool):
@@ -67,7 +39,6 @@ class TroubleshootIR(Tool):
             f"Device: '{input_data.device_id}', Operation: '{input_data.operation}'"
         )
 
-        # Load device mapping
         device_mapping = load_device_mapping(input_data.device_id)
         if not device_mapping:
             output = TroubleshootIRResponse(
@@ -98,7 +69,6 @@ class TroubleshootIR(Tool):
 
         logger.info(f"Testing {protocol} protocol, code: {hex_code}")
 
-        # Test configurations: (power_boost, carrier_freq, description)
         test_configs = [
             (False, 38000, "Standard: ~78% duty cycle, 38kHz"),
             (True, 38000, "High Power: 100% duty cycle, 38kHz"),

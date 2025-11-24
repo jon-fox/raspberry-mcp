@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 from mcp_server.interfaces.tool import Tool, ToolResponse
 from mcp_server.services.ir_listener_manager import IRListenerManager
-from mcp_server.tools.register_devices.register_models import (
+from mcp_server.tools.infrared_retrieval.submit_mappings.mappings_models import (
     SubmitMappingsInput,
     SubmitMappingsOutput,
 )
