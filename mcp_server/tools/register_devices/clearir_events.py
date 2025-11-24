@@ -1,5 +1,3 @@
-"""Tool for clearing IR events."""
-
 import logging
 from typing import Dict, Any
 

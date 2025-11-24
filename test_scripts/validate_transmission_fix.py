@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Simple validation script to test the fixed IR transmission logic.
-This tests the core pigpio transmission without the full MCP system.
-"""
 import asyncio
 import logging
 

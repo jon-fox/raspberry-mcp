@@ -1,5 +1,3 @@
-"""Tool for reading light level from photo sensor."""
-
 import logging
 from datetime import datetime
 from typing import Dict, Any

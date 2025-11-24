@@ -1,5 +1,3 @@
-"""Tool for troubleshooting IR device control issues."""
-
 import asyncio
 import logging
 from typing import Dict, Any

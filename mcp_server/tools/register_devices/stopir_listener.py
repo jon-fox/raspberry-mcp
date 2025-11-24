@@ -1,5 +1,3 @@
-"""Tool for stopping the IR listener."""
-
 import logging
 from typing import Dict, Any
 

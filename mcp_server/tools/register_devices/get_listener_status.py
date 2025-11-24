@@ -1,5 +1,3 @@
-"""Tool for getting IR listener status and diagnostics."""
-
 import logging
 from typing import Dict, Any
 

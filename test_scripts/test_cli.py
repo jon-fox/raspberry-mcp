@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Unified CLI for running all Raspberry Pi MCP test scripts."""
 
 import sys
 import asyncio

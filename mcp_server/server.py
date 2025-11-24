@@ -1,5 +1,3 @@
-"""example-mcp-server MCP Server HTTP Stream Transport."""
-
 from typing import List
 import argparse
 import logging

@@ -1,5 +1,3 @@
-"""Dummy AC control tool - simulates AC cooling by adjusting temperature."""
-
 import logging
 from typing import Dict, Any
 

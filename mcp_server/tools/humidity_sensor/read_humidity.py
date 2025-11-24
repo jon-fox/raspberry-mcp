@@ -1,5 +1,3 @@
-"""Tool for reading humidity and temperature from DHT22 sensor."""
-
 import logging
 import time
 from datetime import datetime

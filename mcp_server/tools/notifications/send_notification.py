@@ -1,5 +1,3 @@
-"""Tool for sending notifications to ntfy.sh."""
-
 import logging
 from typing import Dict, Any
 

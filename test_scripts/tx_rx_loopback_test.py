@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test script to verify IR transmitter can be detected by receiver.
-This replaces the broken loopback test with a direct approach.
 
-GPIO17 = Transmitter (TX)
-GPIO27 = Receiver (RX)
-
-Run this to verify the fix works.
-"""
 import sys
 import asyncio
 import logging

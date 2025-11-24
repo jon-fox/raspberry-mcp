@@ -1,5 +1,3 @@
-"""Simple tool for controlling climate simulation - replaces real sensor for testing."""
-
 import logging
 from typing import Dict, Any
 

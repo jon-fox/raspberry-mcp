@@ -1,5 +1,3 @@
-"""Realistic AC control tool with Shelly smart plug integration."""
-
 import logging
 import threading
 import time

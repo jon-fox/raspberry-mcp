@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""
-Simple climate simulation test - agent reacts to temperature.
-
-Workflow:
-1. Enable simulation at 75°F (too hot)
-2. Agent reads sensor, detects too hot
-3. Agent calls ControlSimulatedAC to cool (cools by 2°F per call)
-4. Agent reads sensor again, repeats until target reached
-"""
 
 import asyncio
 from mcp_server.tools.simulation import SimulateClimate, ControlSimulatedAC

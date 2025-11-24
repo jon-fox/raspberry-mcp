@@ -1,5 +1,3 @@
-"""Tool for submitting IR mappings."""
-
 import logging
 from typing import Dict, Any
 
