@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 async def test_fixed_transmission():
     """Test the fixed IR transmission logic."""
     if not PIGPIO_AVAILABLE:
-        print("❌ pigpio not available - cannot test on this system")
+        print("FAILED: pigpio not available - cannot test on this system")
         return False
 
     print("=== Testing Fixed IR Transmission ===")
@@ -36,9 +36,9 @@ async def test_fixed_transmission():
         print("1. Connecting to pigpio daemon...")
         pi = pigpio.pi()
         if not pi.connected:
-            print("❌ pigpiod not running. Start with: sudo systemctl start pigpiod")
+            print("FAILED: pigpiod not running. Start with: sudo systemctl start pigpiod")
             return False
-        print("✅ Connected to pigpiod")
+        print("SUCCESS: Connected to pigpiod")
 
         # Setup GPIO pin properly
         print("2. Setting up GPIO17 for IR transmission...")
@@ -46,7 +46,7 @@ async def test_fixed_transmission():
         pi.set_PWM_frequency(TX_PIN, CARRIER_FREQ)
         pi.set_PWM_dutycycle(TX_PIN, 0)  # Start with PWM off
         print(
-            f"✅ GPIO17 configured: {CARRIER_FREQ}Hz, {DUTY_CYCLE/255*100:.0f}% duty cycle"
+            f"SUCCESS: GPIO17 configured: {CARRIER_FREQ}Hz, {DUTY_CYCLE/255*100:.0f}% duty cycle"
         )
 
         # Test 1: Simple burst
@@ -54,7 +54,7 @@ async def test_fixed_transmission():
         pi.set_PWM_dutycycle(TX_PIN, DUTY_CYCLE)
         await asyncio.sleep(0.1)  # 100ms burst
         pi.set_PWM_dutycycle(TX_PIN, 0)
-        print("✅ Test burst sent")
+        print("SUCCESS: Test burst sent")
 
         # Test 2: NEC-style pattern
         print("4. Sending NEC-style IR pattern...")
@@ -80,7 +80,7 @@ async def test_fixed_transmission():
         await asyncio.sleep(0.00056)  # 560us
         pi.set_PWM_dutycycle(TX_PIN, 0)
 
-        print("✅ NEC pattern sent")
+        print("SUCCESS: NEC pattern sent")
 
         # Ensure PWM is off
         pi.set_PWM_dutycycle(TX_PIN, 0)
@@ -89,14 +89,14 @@ async def test_fixed_transmission():
         return True
 
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"FAILED: Test failed: {e}")
         return False
     finally:
         if pi is not None:
             try:
                 pi.set_PWM_dutycycle(TX_PIN, 0)
                 pi.stop()
-                print("✅ pigpio connection closed")
+                print("SUCCESS: pigpio connection closed")
             except Exception:
                 pass
 
@@ -105,14 +105,14 @@ async def main():
     success = await test_fixed_transmission()
     print("\n" + "=" * 40)
     if success:
-        print("🎉 TRANSMISSION TEST PASSED!")
+        print("TRANSMISSION TEST PASSED!")
         print("The fixed code should now work properly.")
         print("Key fixes applied:")
-        print("  ✅ Removed 1kHz test signal interference")
-        print("  ✅ Set duty cycle to 50% (was 100%)")
-        print("  ✅ Proper frequency setup before each transmission")
+        print("  - Removed 1kHz test signal interference")
+        print("  - Set duty cycle to 50% (was 100%)")
+        print("  - Proper frequency setup before each transmission")
     else:
-        print("❌ TRANSMISSION TEST FAILED!")
+        print("TRANSMISSION TEST FAILED!")
     print("=" * 40)
 
 

@@ -113,7 +113,7 @@ class SubmitMappings(Tool):
                 num_required = len(input_data.required_operations)
                 num_optional = len(input_data.optional_operations)
                 logger.info(
-                    f"✓ Saved mapping for '{input_data.device_key}': {num_operations} operations"
+                    f"Saved mapping for '{input_data.device_key}': {num_operations} operations"
                 )
 
                 output = SubmitMappingsOutput(
@@ -125,7 +125,7 @@ class SubmitMappings(Tool):
                     mapped_optional=input_data.optional_operations,
                 )
             else:
-                logger.error(f"✗ Failed to save mapping for '{input_data.device_key}'")
+                logger.error(f"Failed to save mapping for '{input_data.device_key}'")
                 output = SubmitMappingsOutput(
                     success=False,
                     message=f"Failed to save device mapping for '{input_data.device_key}'. "

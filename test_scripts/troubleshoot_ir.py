@@ -127,10 +127,10 @@ class TroubleshootIR(Tool):
             )
 
             if success:
-                results.append(f"✓ {description}: {message}")
+                results.append(f"SUCCESS {description}: {message}")
                 logger.info(f"Test {tests_performed} successful: {message}")
             else:
-                results.append(f"✗ {description}: {message}")
+                results.append(f"FAILED {description}: {message}")
                 logger.error(f"Test {tests_performed} failed: {message}")
 
             # Wait between tests to avoid interference

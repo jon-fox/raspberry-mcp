@@ -36,10 +36,10 @@ async def test_transmitter_receiver_loopback():
     success, message = await manager.start_listening()
 
     if not success:
-        print(f"❌ Failed to start IR listener: {message}")
+        print(f"FAILED: Failed to start IR listener: {message}")
         return False
 
-    print(f"✅ IR listener started: {message}")
+    print(f"SUCCESS: IR listener started: {message}")
 
     # Clear any existing events
     print("2. Clearing previous events...")
@@ -53,11 +53,11 @@ async def test_transmitter_receiver_loopback():
     tx_success, tx_message = await ir_send("nec", "0x12345678")
 
     if not tx_success:
-        print(f"❌ Failed to send IR signal: {tx_message}")
+        print(f"FAILED: Failed to send IR signal: {tx_message}")
         await manager.stop_listening()
         return False
 
-    print(f"✅ IR signal sent: {tx_message}")
+    print(f"SUCCESS: IR signal sent: {tx_message}")
 
     # Wait for the signal to be received
     print("4. Waiting for signal detection...")
@@ -67,7 +67,7 @@ async def test_transmitter_receiver_loopback():
     recent_events = manager.get_recent_events(10)
 
     if len(recent_events) == 0:
-        print("❌ No IR signals detected by receiver!")
+        print("FAILED: No IR signals detected by receiver!")
         print("   This indicates the transmitter signal is not being received.")
         print("   Possible issues:")
         print("   - TX/RX hardware not properly connected")
@@ -75,7 +75,7 @@ async def test_transmitter_receiver_loopback():
         print("   - Wrong duty cycle")
         print("   - Pin conflict or GPIO configuration issue")
     else:
-        print(f"✅ SUCCESS! Detected {len(recent_events)} IR signal(s)")
+        print(f"SUCCESS! Detected {len(recent_events)} IR signal(s)")
         for i, event in enumerate(recent_events):
             analysis = event.get("analysis", {})
             protocol = analysis.get("protocol", "Unknown")
@@ -99,17 +99,17 @@ async def main():
 
         print("\n" + "=" * 50)
         if success:
-            print("🎉 LOOPBACK TEST PASSED!")
+            print("LOOPBACK TEST PASSED!")
             print("The transmitter can now be detected by the receiver.")
         else:
-            print("❌ LOOPBACK TEST FAILED!")
+            print("LOOPBACK TEST FAILED!")
             print("The receiver cannot detect the transmitter signal.")
         print("=" * 50)
 
         return success
 
     except Exception as e:
-        print(f"❌ Test failed with error: {e}")
+        print(f"FAILED: Test failed with error: {e}")
         return False
 
 

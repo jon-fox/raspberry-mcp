@@ -49,7 +49,7 @@ async def main():
 
         # Agent decides: too hot?
         if current_temp <= target_temp:
-            print("   - Decision: Target reached! ✓")
+            print("   - Decision: Target reached!")
             # Agent would turn off real AC here
             result = await ac_tool.execute(ControlACInput(action="turn_off"))
             print(f"   - {result.output.message}")

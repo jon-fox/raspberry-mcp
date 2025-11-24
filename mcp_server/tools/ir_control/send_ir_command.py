@@ -95,9 +95,9 @@ class SendIRCommand(Tool):
                     logger.info(f"  Address: 0x{address:02X}, Command: 0x{command:02X}")
 
                 if verified:
-                    logger.info(f"  ✓ Verified {protocol} protocol from capture")
+                    logger.info(f"  Verified {protocol} protocol from capture")
                 else:
-                    logger.info("  ⚠ Unverified protocol - using pattern matching")
+                    logger.info("  WARNING: Unverified protocol - using pattern matching")
 
                 logger.info(f"  Signal characteristics: {pulse_count} pulses captured")
                 logger.debug(f"  Full operation details: {operation_details}")
@@ -131,7 +131,7 @@ class SendIRCommand(Tool):
 
         if ok:
             if operation_details and operation_details.get("verified"):
-                message = f"✓ Verified {protocol} command '{input_data.operation}' sent successfully to '{input_data.device_id}' (Code: {hex_code})"
+                message = f"Verified {protocol} command '{input_data.operation}' sent successfully to '{input_data.device_id}' (Code: {hex_code})"
             else:
                 message = f"Command '{input_data.operation}' sent to '{input_data.device_id}' using {protocol} protocol (Code: {hex_code})"
             logger.info(f"IR transmission successful: {detail}")
